@@ -1,0 +1,20 @@
+{
+  "space": 2,
+  "semicolon": false,
+  "prettier": true,
+  "env": [
+    "node",
+    "browser",
+    "jest/globals"
+  ],
+  "plugins": [
+    "jest"
+  ],
+  "extends": [
+    "xo-react",
+    "plugin:jest/recommended",
+    "prettier"
+  ],
+  "rules": {},
+  "overrides": []
+}
