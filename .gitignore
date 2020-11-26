@@ -13,3 +13,6 @@
 # environment settings
 /.vscode
 /packages/*/.vscode
+
+# playground
+/packages/playground/public/bundle.*

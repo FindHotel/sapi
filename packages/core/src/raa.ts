@@ -1,9 +1,9 @@
 import RobustWebSocket from 'robust-websocket'
 
 const RECONNECT_ATTEMPTS = 20
-const RECONNECT_ATTEMPT_INTERVAL = 50 // ms
-const RECONNECT_RETARDER = 1.4 // factor to slow down reconnect interval
-const SOCKET_TIMEOUT = 500 // ms
+const RECONNECT_ATTEMPT_INTERVAL = 50 // Ms
+const RECONNECT_RETARDER = 1.4 // Factor to slow down reconnect interval
+const SOCKET_TIMEOUT = 500 // Ms
 
 const SOCKET_READY_STATES = {
   CONNECTING: 0,
@@ -23,6 +23,7 @@ type GetRatesParameters = {
   language: string
   currency: string
   country: string
+  getAllOffers: boolean
 }
 
 export type RateBreakdown = {
@@ -66,7 +67,8 @@ const createQuery = (parameters: GetRatesParameters): string => {
     anonymousId,
     language,
     currency,
-    country
+    country,
+    getAllOffers = false
   } = parameters
 
   const query = {
@@ -81,7 +83,7 @@ const createQuery = (parameters: GetRatesParameters): string => {
     cugDeals: 'signed_in,offline',
     deviceCategory: 'desktop',
     facetsEnabled: false,
-    getAllOffers: false,
+    getAllOffers,
     includeLocalTaxes: true,
     includeTaxes: true,
     profileId: 'default',
@@ -102,13 +104,13 @@ const createQuery = (parameters: GetRatesParameters): string => {
   return queryString
 }
 
-let onRatesReseived = rates => {
+let onRatesReseived = (rates) => {
   console.log(rates)
 }
 
 const handleWsOpen = () => {
   if (lastRequest) {
-    // webSocket.send(lastRequest)
+    // WebSocket.send(lastRequest)
   }
 }
 
@@ -116,7 +118,7 @@ const handleWsClose = () => {
   console.log('Close websocket')
 }
 
-const handleWsMessage = event => {
+const handleWsMessage = (event) => {
   let response = {}
 
   try {
@@ -128,11 +130,11 @@ const handleWsMessage = event => {
   onRatesReseived(response)
 }
 
-const getRates: GetRates = webSocket => (parameters, onRatesCb) => {
+const getRates: GetRates = (webSocket) => (parameters, onRatesCb) => {
   lastRequest = createQuery(parameters)
 
-  return new Promise(resolve => {
-    onRatesReseived = response => {
+  return new Promise((resolve) => {
+    onRatesReseived = (response) => {
       if (response.status?.complete) {
         lastRequest = ''
 
@@ -143,7 +145,9 @@ const getRates: GetRates = webSocket => (parameters, onRatesCb) => {
       } else {
         lastResponse = response
 
-        onRatesCb(lastResponse)
+        if (typeof onRatesCb === 'function') {
+          onRatesCb(lastResponse)
+        }
       }
     }
 

@@ -40,8 +40,12 @@ type Base = {
   }
 }
 
-const getListOfValues = base => () => {
+const getListOfValues = (base) => () => {
   return base?.configs?.lov
+}
+
+const getConfig = (base) => () => {
+  return base?.configs
 }
 
 const sapiClient = async (
@@ -72,7 +76,8 @@ const sapiClient = async (
 
   return {
     search: search(base),
-    getListOfValues: getListOfValues(base)
+    getListOfValues: getListOfValues(base),
+    getConfig: getConfig(base)
   }
 }
 

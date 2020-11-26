@@ -4,7 +4,6 @@ import {Rates, OnRatesCb} from './raa'
 
 import {
   placeSearch,
-  hotelSearch,
   Hit,
   PlaceSearchParameters,
   PlaceSearchResults,
@@ -15,6 +14,8 @@ import {
 import {getFilterFromConfig} from './configs'
 
 type OnHotelsCb = (hotels: PlaceSearchResponse) => void
+
+type OnComleteCb = (response: PlaceSearchWithRatesResponse) => void
 
 export type PlaceSearchWithRatesParameters = PlaceSearchParameters & {
   checkIn: string
@@ -39,11 +40,12 @@ export type PlaceSearchWithRatesResponse = {
 export type Search = (
   parameters: PlaceSearchWithRatesParameters,
   onHotelsCb?: OnHotelsCb,
-  onRatesCb?: OnRatesCb
+  onRatesCb?: OnRatesCb,
+  onComleteCb?: OnComleteCb
 ) => Promise<PlaceSearchWithRatesResponse>
 
 const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
-  const hitRates = rates.find(rate => rate.id === hit.objectID)
+  const hitRates = rates.find((rate) => rate.id === hit.objectID)
 
   return {
     ...hit,
@@ -52,12 +54,13 @@ const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
 }
 
 const generateDestinationString = (hits: Hit[]): string =>
-  hits.map(hit => hit.objectID).join(',')
+  hits.map((hit) => hit.objectID).join(',')
 
 export const search = (base): Search => async (
   parameters,
   onHotelsCb,
-  onRatesCb
+  onRatesCb,
+  onComleteCb
 ) => {
   const {
     algoliaClient,
@@ -97,14 +100,61 @@ export const search = (base): Search => async (
     onRatesCb
   )
 
-  return {
+  const result = {
     place: placeSearchResults.place,
     rates: rates?.results,
     results: {
       ...placeSearchResults.results,
-      hits: placeSearchResults.results.hits.map(hit =>
+      hits: placeSearchResults.results.hits.map((hit) =>
         augmentHitWithRates(hit, rates?.results)
       )
+    }
+  }
+
+  if (typeof onComleteCb === 'function') {
+    onComleteCb(result)
+  }
+
+  return {
+    getHits: () => placeSearchResults.results,
+    getRates: (hitId) => {
+      if (!hitId) {
+        return rates.results
+      }
+
+      const hitRates = rates.results.find((hitRates) => hitRates.id === hitId)
+
+      return hitRates
+    },
+    loadRates: (hitId) => {
+      if (!hitId) {
+        throw new Error('Hit id must be provided')
+      }
+
+      const destination = hitId && hitId.toString()
+
+      return raaClient.getRates({
+        destination,
+        checkIn,
+        checkOut,
+        rooms,
+        anonymousId,
+        language,
+        currency,
+        country,
+        getAllOffers: true
+      })
+    },
+    getHitsWithRates: () => {
+      return {
+        ...placeSearchResults.results,
+        hits: placeSearchResults.results.hits.map((hit) =>
+          augmentHitWithRates(hit, rates?.results)
+        )
+      }
+    },
+    loadMore: () => {
+      console.log('Load more reults')
     }
   }
 }

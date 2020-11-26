@@ -4,7 +4,7 @@ import {nodeResolve} from '@rollup/plugin-node-resolve'
 import {terser} from 'rollup-plugin-terser'
 
 // TODO: Package individual packages
-export default {
+const config = {
   input: 'packages/core/src/index.ts',
   output: {
     dir: 'dist',
@@ -21,3 +21,5 @@ export default {
     typescript()
   ]
 }
+
+export default config

@@ -95,7 +95,7 @@ export const generateSortByPriceFilters = (
   return filters
 }
 
-const buildFacetFilters = parameters => {
+const buildFacetFilters = (parameters) => {
   const {facilities, starRating, propertyTypeId} = parameters
 
   const propertyTypeIdFilter = propertyTypeId && [
@@ -103,7 +103,7 @@ const buildFacetFilters = parameters => {
   ]
 
   const facilitiesFilter =
-    facilities && facilities.map(item => `facilities:${item}`)
+    facilities && facilities.map((item) => `facilities:${item}`)
 
   const starRatingFilter =
     starRating &&
@@ -123,7 +123,7 @@ const buildFacetFilters = parameters => {
   return res
 }
 
-const buildNumericFilters = parameters => {
+const buildNumericFilters = (parameters) => {
   const {guestRating} = parameters
 
   if (guestRating) {
@@ -183,7 +183,7 @@ const buildHotelAttributesToRetrieve = (language = 'en') => {
   ]
 }
 
-const getPlaceMeta = algoliaClient => async (
+const getPlaceMeta = (algoliaClient) => async (
   placeId: string
 ): Promise<PlaceMeta> => {
   const requests = [
@@ -362,7 +362,7 @@ export const hotelSearch = (
   algoliaClient: AlgoliaClient,
   options: SapiClientOptions
 ) => async (parameters, searchConfig) => {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
         place: {},

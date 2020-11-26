@@ -1,7 +1,7 @@
 import jexl from 'jexl'
 import {getIndexName, PlaceSearchParameters} from './algolia'
 
-// export type ListOfValuesItem = {
+// Export type ListOfValuesItem = {
 //   id: number
 //   categoryID?: number
 //   objectID: string
@@ -25,15 +25,15 @@ export type SearchConfig = string[]
 
 type ConfigSearchType = 'place_search' | 'hotel_search'
 
-jexl.addTransform('map', (arr, s) => arr.map(x => s.replace(/%s/g, x)))
+jexl.addTransform('map', (array, s) => array.map((x) => s.replace(/%s/g, x)))
 
 const buildFiltersFromConfig = (rules, context): SearchConfig => {
   let filters = []
 
-  rules.some(rule => {
+  rules.some((rule) => {
     try {
       if (jexl.evalSync(rule.criteria, context)) {
-        filters = rule.value.map(line => jexl.evalSync(line, context))
+        filters = rule.value.map((line) => jexl.evalSync(line, context))
       }
     } catch {}
 
@@ -68,7 +68,7 @@ export const getConfigs = (algoliaClient, language) => async () => {
     {
       indexName: getIndexName('lov'),
       params: {
-        hitsPerPage: 1000, // max page size
+        hitsPerPage: 1000, // Max page size
         attributesToRetrieve: getLovAttributesToRetrive(language),
         attributesToHighlight: null,
         getRankingInfo: true

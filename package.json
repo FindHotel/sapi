@@ -8,15 +8,18 @@
   ],
   "types": "dist/types",
   "scripts": {
+    "clean:dist": "rm -rf dist",
     "build": "rollup -c && tsc --outDir dist/lib --declarationDir dist/types --declaration true",
     "lerna": "lerna",
     "lerna:bootstrap": "lerna bootstrap",
     "test": "ts-jest packages/*",
-    "prepare": "npm run build",
+    "__prepare": "npm run build",
     "rollup": "rollup -c",
-    "rollup:watch": "rollup -c --watch",
+    "rollup:watch": "npm run clean:dist && rollup -c --watch",
     "typescript": "tsc",
-    "typescript:watch": "tsc --watch"
+    "typescript:watch": "tsc --watch",
+    "install:all": "cd packages/core && npm install && cd ../playground && npm install && cd ../../ && npm install",
+    "playground": "cd packages/playground && npm run dev"
   },
   "repository": {
     "type": "git",
