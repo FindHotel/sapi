@@ -4,9 +4,10 @@
   "description": "FindHotel Search API",
   "main": "dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "types"
   ],
-  "types": "dist/types",
+  "types": "dist/types/packages/core/src",
   "scripts": {
     "clean:dist": "rm -rf dist",
     "build": "rollup -c && tsc --outDir dist/lib --declarationDir dist/types --declaration true",
