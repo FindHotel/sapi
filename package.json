@@ -10,7 +10,7 @@
   "types": "dist/types/packages/core/src",
   "scripts": {
     "clean:dist": "rm -rf dist",
-    "build": "rollup -c && tsc --outDir dist/lib --declarationDir dist/types --declaration true",
+    "build": "rollup -c && tsc --outDir dist/lib --declarationDir dist/types --declaration true --emitDeclarationOnly",
     "lerna": "lerna",
     "lerna:bootstrap": "lerna bootstrap",
     "test": "ts-jest packages/*",
