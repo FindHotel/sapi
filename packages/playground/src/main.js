@@ -43,10 +43,20 @@ const run = async () => {
    * Run search
    */
   const searchParameters = {
+    hotelId: getSearchParameter('hotelId'),
     placeId: getSearchParameter('placeId'),
     checkIn: getSearchParameter('checkIn'),
     checkOut: getSearchParameter('checkOut'),
-    rooms: getSearchParameter('rooms') || 2
+    starRatings: getSearchParameter('starRatings'),
+    guestRatings: getSearchParameter('guestRatings'),
+    rooms: getSearchParameter('rooms') || '2',
+    rates: true
+    // BoundingBox: [
+    //   22.150523643792884,
+    //   114.00821685791017,
+    //   22.445302681401593,
+    //   114.33780670166017
+    // ]
   }
 
   log('Search start')
@@ -65,12 +75,16 @@ const run = async () => {
   )
 
   log('Search done', search)
-  log('Search: get hits', search.getHits())
-  log('Search: get rates', search.getRates())
-  log('Search: get hits with rates', search.getHitsWithRates())
+  // Log('Search: get hits', search.getHits())
+  // log('Search: get rates', search.getRates())
+  // log('Search: get hits with rates', search.getHitsWithRates())
 
-  const allRates = await search.loadRates('1055366')
-  log('Search: load rates for hotelId = "1055366"', allRates)
+  // const allRates = await search.loadRates('1055366')
+  // log('Search: load rates for hotelId = "1055366"', allRates)
+
+  // log('Search: load next page start')
+  // const nextPage = await search.loadMore()
+  // log('Search: load next page finish', nextPage)
 
   window.Sapi = {
     search

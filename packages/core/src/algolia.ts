@@ -1,11 +1,11 @@
 import {SapiClientOptions, AlgoliaClient} from '.'
-import {SearchConfig} from './configs'
+import {HsoConfig} from './configs'
+import {SearchType} from './search'
 
-const PAGE_SIZE = 50
 const DEFAULT_RADIUS = 20000
 const DEFAULT_PRECISION = 5000
 
-type IndexType = 'autocomplete' | 'hotel' | 'hotelranking' | 'lov'
+type IndexType = 'autocomplete' | 'hotel' | 'hotelranking' | 'lov' | 'currency'
 
 type Location = {
   lat: number
@@ -16,14 +16,14 @@ type Location = {
 
 type Polygon = number[]
 
-export type PlaceMeta = {
-  polygon: Polygon[]
-  _geoloc: Location
+export type Anchor = {
+  anchor: any
+  anchorHit: Hit
 }
 
-export type PlaceSearchParameters = {
-  /** Place Id */
-  placeId: string
+export type SearchParameters = {
+  placeId?: string
+  hotelId?: string
   length?: number
   offset?: number
   features?: string | string[]
@@ -31,8 +31,15 @@ export type PlaceSearchParameters = {
   propertyTypes?: string | string[]
   guestRatings?: string | string[]
   sortField?: string
-  /** Whether to filter out hostels from results. Defaults to `false` */
-  noHostels?: boolean
+  noHostels?: string
+  searchType?: SearchType
+  boundingBox?: number[]
+}
+
+export type StaticSearchParameters = SearchParameters & {
+  boundingBox?: number[]
+  polygon?: Polygon[]
+  geolocation?: Location
 }
 
 export type Hit = {
@@ -49,13 +56,12 @@ export type PlaceSearchResults = {
 }
 
 export type PlaceSearchResponse = {
-  place: PlaceMeta
   results: PlaceSearchResults
 }
 
 export type PlaceSearch = (
-  parameters: PlaceSearchParameters,
-  searchConfig: SearchConfig
+  parameters: SearchParameters,
+  HsoConfig: HsoConfig
 ) => Promise<PlaceSearchResponse>
 
 type OptionalFiltes = string[]
@@ -64,12 +70,15 @@ type BuildOptionalFiltersParameters = {
   sortField?: string
 }
 
+type AlgoliaRequest = Record<string, unknown>
+
 export const getIndexName = (index: IndexType): string => {
   const indexNames = {
     autocomplete: 'prod_autocomplete_v2',
     hotel: 'prod_hotel_v3',
     hotelranking: 'prod_hotelranking_v1_os000002_hso_availability',
-    lov: 'prod_lov_v2'
+    lov: 'prod_lov_v2',
+    currency: 'prod_curr_v1'
   }
 
   const indexName = indexNames[index]
@@ -137,7 +146,7 @@ const buildFacets = () => {
   return ['*']
 }
 
-const buildFilters = (noHostels = false): string => {
+const buildFilters = (noHostels?: string): string => {
   // TODO: move to const
   const HOSTEL_PROPERTY_TYPE_ID = '5'
 
@@ -151,15 +160,15 @@ const buildFilters = (noHostels = false): string => {
 }
 
 const buildOptionalFilters = (
-  searchConfig: SearchConfig,
+  hsoConfig: HsoConfig,
   parameters: BuildOptionalFiltersParameters
 ): OptionalFiltes => {
   return parameters.sortField === 'price'
-    ? [...searchConfig, ...generateSortByPriceFilters()]
-    : searchConfig
+    ? [...hsoConfig, ...generateSortByPriceFilters()]
+    : hsoConfig
 }
 
-const buildHotelAttributesToRetrieve = (language = 'en') => {
+const buildHotelAttributesToRetrieve = (language = 'en'): string[] => {
   return [
     '_geoloc',
     'checkInTime',
@@ -185,191 +194,135 @@ const buildHotelAttributesToRetrieve = (language = 'en') => {
   ]
 }
 
-const getPlaceMeta = (algoliaClient) => async (
-  placeId: string
-): Promise<PlaceMeta> => {
+const buildAutocompleteAttributesToRetrieve = (language = 'en'): string[] => {
+  return [
+    'objectType',
+    'placeType',
+    'placeCategory',
+    'objectID',
+    '_geoloc',
+    'priceBucketWidth',
+    'polygon',
+    `placeName.${language}`,
+    `placeADN.${language}`,
+    `placeDN.${language}`,
+    `hotelName.${language}`
+  ]
+}
+
+export const getAnchor = (
+  algoliaClient: AlgoliaClient,
+  options: SapiClientOptions
+) => async (parameters: {
+  placeId?: string
+  hotelId?: string
+}): Promise<Anchor> => {
+  const {language} = options
+  const {placeId, hotelId} = parameters
+  const autocompleteFacetFilters = []
+
+  if (hotelId) {
+    autocompleteFacetFilters.push(`objectID:hotel:${hotelId}`)
+  } else if (placeId) {
+    autocompleteFacetFilters.push(`objectID:place:${placeId}`)
+  }
+
   const requests = [
     {
       indexName: getIndexName('autocomplete'),
       params: {
-        facetFilters: [[`objectID:place:${placeId}`]],
-        attributesToRetrieve: [
-          'objectType',
-          'placeType',
-          'placeCategory',
-          'objectID',
-          '_geoloc',
-          'priceBucketWidth',
-          'polygon',
-          'placeName.en',
-          'placeADN.en',
-          'placeDN.en',
-          'hotelName.en'
-        ],
+        facetFilters: [autocompleteFacetFilters],
+        attributesToRetrieve: buildAutocompleteAttributesToRetrieve(language),
         attributesToHighlight: null
       }
     }
   ]
 
-  const metaResponse = await algoliaClient.search(requests)
-  const res = metaResponse?.results || []
-  const hits = res[0]?.hits || []
-  const hit = hits[0]
-
-  return hit
-}
-
-const insidePolygonSearch = (
-  algoliaClient: AlgoliaClient,
-  options: SapiClientOptions
-) => (
-  polygon: Polygon[],
-  parameters: PlaceSearchParameters,
-  searchConfig: SearchConfig
-): Promise<PlaceSearchResults> => {
-  const index = algoliaClient.initIndex(getIndexName('hotel'))
-
-  const {
-    features,
-    starRatings,
-    propertyTypes,
-    guestRatings,
-    sortField,
-    noHostels,
-    length = PAGE_SIZE,
-    offset = 0
-  } = parameters
-
-  const {language} = options
-
-  const facetFilters = buildFacetFilters({
-    facilities: features,
-    starRating: starRatings,
-    propertyTypeId: propertyTypes
-  })
-
-  const numericFilters = buildNumericFilters({
-    guestRating: guestRatings
-  })
-
-  const facets = buildFacets()
-
-  const filters = buildFilters(noHostels)
-
-  const optionalFilters = buildOptionalFilters(searchConfig, {sortField})
-
-  const request = {
-    length,
-    offset,
-    facets,
-    filters,
-    numericFilters,
-    facetFilters,
-    insidePolygon: polygon,
-    attributesToRetrieve: buildHotelAttributesToRetrieve(language),
-    attributesToHighlight: null,
-    getRankingInfo: false,
-    optionalFilters
+  if (hotelId) {
+    requests.push({
+      indexName: getIndexName('hotel'),
+      params: {
+        facetFilters: [[`objectID:${hotelId}`]],
+        attributesToRetrieve: buildHotelAttributesToRetrieve(language),
+        attributesToHighlight: null
+      }
+    })
   }
 
-  return index.search('', request)
-}
+  const anchorResponse = await algoliaClient.search(requests)
 
-const aroundLocationSearch = (
-  algoliaClient: AlgoliaClient,
-  options: SapiClientOptions
-) => (
-  geolocation: Location,
-  parameters: PlaceSearchParameters,
-  searchConfig: SearchConfig
-): Promise<PlaceSearchResults> => {
-  const index = algoliaClient.initIndex(getIndexName('hotel'))
-
-  const {
-    features,
-    starRatings,
-    propertyTypes,
-    guestRatings,
-    sortField,
-    noHostels,
-    length = PAGE_SIZE,
-    offset = 0
-  } = parameters
-
-  const {language} = options
-
-  const facetFilters = buildFacetFilters({
-    facilities: features,
-    starRating: starRatings,
-    propertyTypeId: propertyTypes
-  })
-
-  const numericFilters = buildNumericFilters({
-    guestRating: guestRatings
-  })
-
-  const facets = buildFacets()
-
-  const filters = buildFilters(noHostels)
-
-  const optionalFilters = buildOptionalFilters(searchConfig, {sortField})
-
-  const request = {
-    length,
-    offset,
-    facets,
-    filters,
-    numericFilters,
-    facetFilters,
-    aroundLatLng: `${geolocation.lat}, ${geolocation.lon}`,
-    aroundRadius: geolocation.radius || DEFAULT_RADIUS,
-    aroundPrecision: geolocation.precision || DEFAULT_PRECISION,
-    attributesToRetrieve: buildHotelAttributesToRetrieve(language),
-    attributesToHighlight: null,
-    getRankingInfo: false,
-    optionalFilters
-  }
-
-  return index.search('', request)
-}
-
-export const placeSearch = (
-  algoliaClient: AlgoliaClient,
-  options: SapiClientOptions
-): PlaceSearch => async (parameters, searchConfig) => {
-  const placeMeta = await getPlaceMeta(algoliaClient)(parameters.placeId)
-
-  const {polygon, _geoloc} = placeMeta
-
-  const results =
-    polygon.length > 0
-      ? await insidePolygonSearch(algoliaClient, options)(
-          polygon,
-          parameters,
-          searchConfig
-        )
-      : await aroundLocationSearch(algoliaClient, options)(
-          _geoloc,
-          parameters,
-          searchConfig
-        )
+  const results = anchorResponse?.results || []
+  const anchorHits = results[0]?.hits || []
+  const hotelHits = results[1]?.hits || []
 
   return {
-    place: placeMeta,
-    results
+    anchor: anchorHits[0],
+    anchorHit: hotelHits[0]
   }
 }
 
-export const hotelSearch = (
+export const staticSearch = (
   algoliaClient: AlgoliaClient,
-  options: SapiClientOptions
-) => async (parameters, searchConfig) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        place: {},
-        results: {}
-      })
-    }, 250)
+  options: SapiClientOptions,
+  hsoConfig: HsoConfig
+) => async (
+  parameters: StaticSearchParameters
+): Promise<PlaceSearchResults> => {
+  const index = algoliaClient.initIndex(getIndexName('hotel'))
+
+  const {language, pageSize} = options
+  const {
+    features,
+    starRatings,
+    propertyTypes,
+    guestRatings,
+    sortField,
+    noHostels,
+    offset = 0,
+    length = pageSize,
+    boundingBox,
+    polygon,
+    geolocation
+  } = parameters
+
+  const facetFilters = buildFacetFilters({
+    facilities: features,
+    starRating: starRatings,
+    propertyTypeId: propertyTypes
   })
+
+  const numericFilters = buildNumericFilters({
+    guestRating: guestRatings
+  })
+
+  const facets = buildFacets()
+
+  const filters = buildFilters(noHostels)
+
+  const optionalFilters = buildOptionalFilters(hsoConfig, {sortField})
+
+  const request: AlgoliaRequest = {
+    length,
+    offset,
+    facets,
+    filters,
+    numericFilters,
+    facetFilters,
+    attributesToRetrieve: buildHotelAttributesToRetrieve(language),
+    attributesToHighlight: null,
+    getRankingInfo: false,
+    optionalFilters
+  }
+
+  if (boundingBox) {
+    request.insideBoundingBox = [boundingBox]
+  } else if (polygon) {
+    request.insidePolygon = polygon
+  } else if (geolocation) {
+    request.aroundLatLng = `${geolocation.lat}, ${geolocation.lon}`
+    request.aroundRadius = geolocation.radius ?? DEFAULT_RADIUS
+    request.aroundPrecision = geolocation.precision ?? DEFAULT_PRECISION
+  }
+
+  return index.search('', request)
 }

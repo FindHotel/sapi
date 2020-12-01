@@ -3,33 +3,29 @@ import {AlgoliaClient, SapiClientOptions, Base} from '.'
 import {Rates, OnRatesCb} from './raa'
 
 import {
-  placeSearch,
+  getAnchor,
+  staticSearch,
   Hit,
-  PlaceSearchParameters,
+  SearchParameters,
+  StaticSearchParameters,
   PlaceSearchResults,
-  PlaceSearchResponse,
-  PlaceMeta
+  PlaceSearchResponse
 } from './algolia'
 
-import {getFilterFromConfig} from './configs'
+import {hsoConfigObjectToString} from './configs'
 
-/** Callback for when static hotels are loaded */
-type OnHotelsCb = (hotels: PlaceSearchResponse) => void
+type OnHotelsCb = (response: Record<string, unknown>) => void
 
-/** Callback for when all hotels are offers are loaded */
-type onCompleteCb = (response: PlaceSearchWithRatesResponse) => void
+type OnComleateCb = (response: Record<string, unknown>) => void
 
-export type RateParameters = {
-  /** Check in date in format: `yyyy-mm-dd` */
+export type PlaceSearchWithRatesParameters = SearchParameters & {
   checkIn: string
   /** Check out date in format: `yyyy-mm-dd` */
   checkOut: string
   /** Room string in format: `room|occupancy` */
   rooms: string
+  rates?: boolean
 }
-
-export type PlaceSearchWithRatesParameters = PlaceSearchParameters &
-  RateParameters
 
 type HitWithRates = Hit & {
   rates?: Rates
@@ -40,7 +36,6 @@ export type PlaceSearchWithRatesResults = PlaceSearchResults & {
 }
 
 export type PlaceSearchWithRatesResponse = {
-  place: PlaceMeta
   rates: Rates[]
   results: PlaceSearchWithRatesResults
 }
@@ -49,8 +44,9 @@ export type Search = (
   parameters: PlaceSearchWithRatesParameters,
   onHotelsCb?: OnHotelsCb,
   onRatesCb?: OnRatesCb,
-  onCompleteCb?: onCompleteCb
-) => Promise<PlaceSearchWithRatesResponse>
+  onComleateCb?: OnComleateCb
+  // ) => Promise<PlaceSearchWithRatesResponse>
+) => Promise<any>
 
 const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
   const hitRates = rates.find((rate) => rate.id === hit.objectID)
@@ -64,82 +60,152 @@ const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
 const generateDestinationString = (hits: Hit[]): string =>
   hits.map((hit) => hit.objectID).join(',')
 
+export type SearchType =
+  | 'insidePolygon'
+  | 'insideBoundingBox'
+  | 'aroundLocation'
+
+const getSearchType = (
+  anchor,
+  parameters: SearchParameters,
+  searchType?: SearchType
+): SearchType => {
+  if (searchType) return searchType
+  if (parameters.boundingBox?.length > 0) return 'insideBoundingBox'
+  if (anchor.polygon?.length > 0) return 'insidePolygon'
+  return 'aroundLocation'
+}
+
+const getDataFromStaticResults = (staticResults = {}) => {
+  const {facets, hits, length, nbHits, offset} = staticResults
+
+  return {
+    facets,
+    hits,
+    length,
+    nbHits,
+    offset
+  }
+}
+
 export const search = (base: Base): Search => async (
   parameters,
   onHotelsCb,
   onRatesCb,
   onCompleteCb
 ) => {
+  const {algoliaClient, raaClient, options, configs} = base
+  const {anonymousId, language, currency, country, pageSize} = options
   const {
-    algoliaClient,
-    raaClient,
-    options,
-    configs: {hso}
-  } = base
-  const {
+    searchType,
+    placeId,
+    hotelId,
+    rates,
     checkIn,
     checkOut,
     rooms,
-    ...placeSearchParameters
-  }: PlaceSearchWithRatesParameters = parameters
-  const {anonymousId, language, currency, country} = options
+    offset = 0,
+    boundingBox
+  } = parameters
 
-  const searchConfig = getFilterFromConfig(
-    hso,
-    'place_search',
-    placeSearchParameters
+  let loadMoreOffset = 0
+
+  const {anchor, anchorHit} = await getAnchor(
+    algoliaClient,
+    options
+  )({
+    placeId,
+    hotelId
+  })
+
+  const hsoConfig = hsoConfigObjectToString(
+    configs.hso,
+    placeId ? 'place_search' : 'hotel_search',
+    parameters
   )
 
-  const placeSearchResults = await placeSearch(algoliaClient, options)(
-    placeSearchParameters,
-    searchConfig
-  )
+  const searchFn = staticSearch(algoliaClient, options, hsoConfig)
 
-  if (typeof onHotelsCb === 'function') {
-    onHotelsCb(placeSearchResults)
-  }
-
-  const rates = await raaClient.getRates(
-    {
-      destination: generateDestinationString(placeSearchResults.results?.hits),
-      checkIn,
-      checkOut,
-      rooms,
-      anonymousId,
-      language,
-      currency,
-      country
-    },
-    onRatesCb
-  )
-
-  const result = {
-    place: placeSearchResults.place,
-    rates: rates?.results,
-    results: {
-      ...placeSearchResults.results,
-      hits: placeSearchResults.results.hits.map((hit) =>
-        augmentHitWithRates(hit, rates?.results)
-      )
+  const runSearch = async (offset = 0) => {
+    const searchParameters: StaticSearchParameters = {
+      ...parameters,
+      offset
     }
+
+    const type = getSearchType(anchor, parameters, searchType)
+
+    switch (type) {
+      case 'aroundLocation':
+        searchParameters.geolocation = anchor._geoloc
+        break
+      case 'insideBoundingBox':
+        searchParameters.boundingBox = boundingBox
+        break
+      case 'insidePolygon':
+      default:
+        searchParameters.polygon = anchor.polygon
+        break
+    }
+
+    const staticResults = await searchFn(searchParameters)
+
+    const output: Record<string, unknown> = {
+      anchor,
+      results: getDataFromStaticResults(staticResults)
+    }
+
+    if (anchorHit) {
+      output.anchorHit = anchorHit
+    }
+
+    if (typeof onHotelsCb === 'function') {
+      onHotelsCb({...output})
+    }
+
+    if (rates) {
+      const ratesResults = await raaClient.getRates(
+        {
+          destination: generateDestinationString(staticResults?.hits),
+          highlightedHotelID: anchorHit?.objectID,
+          checkIn,
+          checkOut,
+          rooms,
+          anonymousId,
+          language,
+          currency,
+          country
+        },
+        onRatesCb
+      )
+
+      output.rates = ratesResults.results
+
+      if (typeof onComleateCb === 'function') {
+        onComleateCb(output)
+      }
+    }
+
+    return output
   }
 
-  if (typeof onCompleteCb === 'function') {
-    onCompleteCb(result)
-  }
+  const searchResults = await runSearch(offset)
 
   return {
-    getHits: () => placeSearchResults.results,
-    getRates: (hitId) => {
+    getHits: () => searchResults.results,
+    getAnchor: () => searchResults.anchor,
+    getAnchorHit: () => searchResults.anchorHit,
+    getRates: (hitId?: SVGStringList) => {
       if (!hitId) {
-        return rates.results
+        return searchResults.rates
       }
 
-      const hitRates = rates.results.find((hitRates) => hitRates.id === hitId)
+      const hitRates = searchResults.rates.find(
+        (hitRates) => hitRates.id === hitId
+      )
 
       return hitRates
     },
-    loadRates: (hitId) => {
+    loadRates: (hitId: string) => {
       if (!hitId) {
         throw new Error('Hit id must be provided')
       }
@@ -160,14 +226,17 @@ export const search = (base: Base): Search => async (
     },
     getHitsWithRates: () => {
       return {
-        ...placeSearchResults.results,
-        hits: placeSearchResults.results.hits.map((hit) =>
-          augmentHitWithRates(hit, rates?.results)
+        ...searchResults.results,
+        results: searchResults.results.hits.map((hit) =>
+          augmentHitWithRates(hit, searchResults.rates)
         )
       }
     },
-    loadMore: () => {
-      console.log('Load more reults')
+    loadMore: async () => {
+      loadMoreOffset += pageSize
+      const searchResults = await runSearch(loadMoreOffset)
+
+      return searchResults
     }
   }
 }

@@ -1,4 +1,6 @@
 import jexl from 'jexl'
+
+import {AlgoliaClient} from '.'
 import {getIndexName, PlaceSearchParameters} from './algolia'
 
 // Export type ListOfValuesItem = {
@@ -8,6 +10,17 @@ import {getIndexName, PlaceSearchParameters} from './algolia'
 //   value: Record<string, string | number>
 //   _rankingInfo?: Record<string, undefined>
 // }
+
+type ExchangeRateResponseType = {objectID: string; rate: number}
+
+export type ExchangeRatesResponseType = {
+  hits: ExchangeRateResponseType[]
+}
+
+export type ExchangeRatesType = {
+  currencyExchangeRate?: number
+  currencyExchangeRateEur?: number
+}
 
 type SearchConfigFilter = {
   criteria: string
@@ -21,13 +34,13 @@ type SearchConfigObject = {
   filters: SearchConfigFilter[]
 }
 
-export type SearchConfig = string[]
+export type HsoConfig = string[]
 
 type ConfigSearchType = 'place_search' | 'hotel_search'
 
 jexl.addTransform('map', (array, s) => array.map((x) => s.replace(/%s/g, x)))
 
-const buildFiltersFromConfig = (rules, context): SearchConfig => {
+const evaluateConfig = (rules, context): SearchConfig => {
   let filters = []
 
   rules.some((rule) => {
@@ -43,26 +56,46 @@ const buildFiltersFromConfig = (rules, context): SearchConfig => {
   return filters
 }
 
-export const getFilterFromConfig = (
+export const hsoConfigObjectToString = (
   configs: SearchConfigObject[],
   searchType: ConfigSearchType,
   parameters: PlaceSearchParameters
 ): SearchConfig => {
   const config = configs.find(({objectID}) => objectID === searchType)
 
-  return buildFiltersFromConfig(config?.filters, parameters)
+  return evaluateConfig(config?.filters, parameters)
 }
 
 export const getLovAttributesToRetrive = (language = 'en'): string[] => {
   return ['id', 'categoryID', 'objectID', `value.${language}`]
 }
 
-export const getConfigs = (algoliaClient, language) => async () => {
+export const getExchangeRatesFromResponse = (
+  currency: string,
+  response: ExchangeRatesResponseType
+): ExchangeRatesType => {
+  const {hits = []} = response
+  const currencyToUsd = hits.find(({objectID}) => objectID === currency)
+  const eurToUsd = hits.find(({objectID}) => objectID === 'EUR')
+
+  return {
+    currencyExchangeRate: currencyToUsd?.rate,
+    currencyExchangeRateEur: currencyToUsd?.rate / eurToUsd?.rate
+  }
+}
+
+export const getConfigs = (
+  algoliaClient: AlgoliaClient,
+  language: string,
+  currency: string
+) => async () => {
+  const currencyFacetFilters = [`objectID:${currency}`, 'objectID:EUR']
+
   const requests = [
     {
       indexName: getIndexName('hotelranking'),
       params: {
-        attributesToHighlight: null
+        attributesToHighlight: []
       }
     },
     {
@@ -70,18 +103,30 @@ export const getConfigs = (algoliaClient, language) => async () => {
       params: {
         hitsPerPage: 1000, // Max page size
         attributesToRetrieve: getLovAttributesToRetrive(language),
-        attributesToHighlight: null,
+        attributesToHighlight: [],
         getRankingInfo: true
+      }
+    },
+    {
+      indexName: getIndexName('currency'),
+      params: {
+        hitsPerPage: currencyFacetFilters.length,
+        query: '',
+        attributesToRetrieve: ['rate'],
+        attributesToHighlight: [],
+        facetFilters: [currencyFacetFilters],
+        getRankingInfo: false
       }
     }
   ]
 
   const {
-    results: [hso, lov]
+    results: [hso, lov, exchangeRates]
   } = await algoliaClient.search(requests)
 
   return {
     hso: hso?.hits,
-    lov: lov?.hits
+    lov: lov?.hits,
+    exchangeRates: getExchangeRatesFromResponse(currency, exchangeRates)
   }
 }

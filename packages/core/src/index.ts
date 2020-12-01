@@ -18,7 +18,7 @@ export type anonymousId = string
 
 export type SapiClient = {
   search: Search
-  getListOfValues: any
+  getConfig: any
 }
 
 /** Options for initializing the Search API client */
@@ -30,13 +30,9 @@ export type SapiClientOptions = {
   currency: string
   /** Currency code for selected user origin country */
   country: string
+  pageSize: number
 }
 
-/**
- * Base configuration for the Search API client
- *
- * @internal
- * */
 export type Base = {
   algoliaClient: AlgoliaClient
   raaClient: any
@@ -47,17 +43,11 @@ export type Base = {
   }
   options: SapiClientOptions & {
     exchangeRate: number
+    pageSize: number
   }
 }
 
-const getListOfValues = (base?: Base) => () => {
-  return base?.configs?.lov
-}
-
-/**
- * @returns a string `yyyy-mm-dd-lengthOfStay`
- */
-const getConfig = (base?: Base) => () => {
+const getConfig = (base: Base) => () => {
   return base?.configs
 }
 
@@ -69,10 +59,10 @@ const sapiClient = async (
     throw new Error('Sapi client requires a valid client key')
   }
 
-  const {language} = options
+  const {language, currency} = options
   const algoliaClient = algoliasearch(ALGOLIA_APP_ID, clientKey)
   const raaClient = raa(RAA_ENDPOINT)
-  const configs = await getConfigs(algoliaClient, language)()
+  const configs = await getConfigs(algoliaClient, language, currency)()
 
   const base: Base = {
     algoliaClient,
@@ -83,13 +73,13 @@ const sapiClient = async (
     },
     options: {
       ...options,
+      pageSize: 20,
       exchangeRate: 1
     }
   }
 
   return {
     search: search(base),
-    getListOfValues: getListOfValues(base),
     getConfig: getConfig(base)
   }
 }

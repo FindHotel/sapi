@@ -16,6 +16,7 @@ export type OnRatesCb = (rates: Rates[]) => void
 
 type GetRatesParameters = {
   destination: string
+  highlightedHotelID?: string
   checkIn: string
   checkOut: string
   rooms: string
@@ -68,6 +69,7 @@ const createQuery = (parameters: GetRatesParameters): string => {
     language,
     currency,
     country,
+    highlightedHotelID,
     getAllOffers = false
   } = parameters
 
@@ -77,6 +79,7 @@ const createQuery = (parameters: GetRatesParameters): string => {
     checkOut,
     destination,
     rooms,
+    highlightedHotelID,
     languageCode: language,
     currencyCode: currency,
     userCountryCode: country,
