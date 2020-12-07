@@ -19,14 +19,23 @@ export type SapiClient = {
   getListOfValues: any
 }
 
+/** Options for initializing the Search API client */
 export type SapiClientOptions = {
   anonymousId: anonymousId
+  /** Language code for selected user language */
   language: string
+  /** Currency code for selected user currency */
   currency: string
+  /** Currency code for selected user origin country */
   country: string
 }
 
-type Base = {
+/**
+ * Base configuration for the Search API client
+ *
+ * @internal
+ * */
+export type Base = {
   algoliaClient: AlgoliaClient
   raaClient: any
   configs: {
@@ -34,20 +43,16 @@ type Base = {
     hso: any
     appConfig: any
   }
-  options: {
-    anonymousId: string
-    language: string
-    currency: string
-    country: string
+  options: SapiClientOptions & {
     exchangeRate: number
   }
 }
 
-const getListOfValues = (base) => () => {
+const getListOfValues = (base?: Base) => () => {
   return base?.configs?.lov
 }
 
-const getConfig = (base) => () => {
+const getConfig = (base?: Base) => () => {
   return base?.configs
 }
 
