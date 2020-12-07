@@ -11,7 +11,9 @@ const RAA_ENDPOINT = 'wss://server.tst.eu.daedalus.fih.io/'
 
 export type AlgoliaClient = any
 
-/** Unique ID identifying users */
+/** Unique ID identifying users
+ * @default new UUID
+ */
 export type anonymousId = string
 
 export type SapiClient = {
