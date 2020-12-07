@@ -8,17 +8,20 @@ const config = {
   input: 'packages/core/src/index.ts',
   output: {
     dir: 'dist',
-    format: 'cjs'
+    format: 'cjs',
+    sourcemap: process.env.NODE_ENV !== 'production'
   },
   plugins: [
-    terser(),
+    process.env.NODE_ENV === 'production' && terser(),
     nodeResolve({
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       preferBuiltins: false,
       browser: true
     }),
     commonjs({extensions: ['.js', '.jsx', '.ts', '.tsx']}),
-    typescript()
+    // TODO: tried to apply: https://stackoverflow.com/questions/63218218/rollup-is-not-generating-typescript-sourcemap
+    // but doesn't seem to work
+    typescript({sourceMap: false})
   ]
 }
 

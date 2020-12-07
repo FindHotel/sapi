@@ -10,14 +10,15 @@
   "types": "dist/types/packages/core/src",
   "scripts": {
     "clean:dist": "rm -rf dist",
-    "build": "rollup -c && tsc --outDir dist/lib --declarationDir dist/types --declaration true --emitDeclarationOnly",
+    "build": "npm run clean:dist && NODE_ENV=production rollup -c && npm run typescript:declarations",
     "lerna": "lerna",
     "lerna:bootstrap": "lerna bootstrap",
     "test": "ts-jest packages/*",
-    "__prepare": "npm run build",
+    "prepare": "npm run build",
     "rollup": "rollup -c",
-    "rollup:watch": "npm run clean:dist && rollup -c --watch",
+    "rollup:watch": "rollup -c --watch",
     "typescript": "tsc",
+    "typescript:declarations": "tsc --outDir dist/lib --declarationDir dist/types --declaration true --emitDeclarationOnly",
     "typescript:watch": "tsc --watch",
     "install:all": "cd packages/core && npm install && cd ../playground && npm install && cd ../../ && npm install",
     "playground": "cd packages/playground && npm run dev"
