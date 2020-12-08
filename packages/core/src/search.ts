@@ -8,8 +8,7 @@ import {
   Hit,
   SearchParameters,
   StaticSearchParameters,
-  PlaceSearchResults,
-  PlaceSearchResponse
+  PlaceSearchResults
 } from './algolia'
 
 import {hsoConfigObjectToString} from './configs'
