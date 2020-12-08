@@ -142,8 +142,17 @@ const buildNumericFilters = (parameters) => {
   }
 }
 
-const buildFacets = () => {
-  return ['*']
+const buildFacets = (): string[] => {
+  return [
+    'facilities',
+    'propertyTypeId',
+    'starRating',
+    'themeIds',
+    'pricing.medianRateBkt',
+    'pricing.medianRateMoFrBkt',
+    'pricing.medianRateSaSuBkt',
+    'pricing.minRateBkt'
+  ]
 }
 
 const buildFilters = (noHostels?: string): string => {

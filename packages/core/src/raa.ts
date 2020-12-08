@@ -16,7 +16,7 @@ export type OnRatesCb = (rates: Rates[]) => void
 
 type GetRatesParameters = {
   destination: string
-  highlightedHotelID?: string
+  anchorDestination: string | undefined
   checkIn: string
   checkOut: string
   rooms: string
@@ -57,7 +57,6 @@ export type GetRates = (
 ) => Promise<RatesResponse>
 
 let lastRequest = ''
-let lastResponse
 
 const createQuery = (parameters: GetRatesParameters): string => {
   const {
@@ -69,7 +68,7 @@ const createQuery = (parameters: GetRatesParameters): string => {
     language,
     currency,
     country,
-    highlightedHotelID,
+    anchorDestination,
     getAllOffers = false
   } = parameters
 
@@ -79,7 +78,7 @@ const createQuery = (parameters: GetRatesParameters): string => {
     checkOut,
     destination,
     rooms,
-    highlightedHotelID,
+    highlightedHotelID: anchorDestination,
     languageCode: language,
     currencyCode: currency,
     userCountryCode: country,
@@ -92,7 +91,6 @@ const createQuery = (parameters: GetRatesParameters): string => {
     profileId: 'default',
     searchId: '0edf6cf0ae429cd67fe5005c5dffa0b8951897a8',
     skipBackendAugmentation: false,
-    useAlternativeRaaEndpoint: true,
     useAlternativeRaaKeys: true
   }
 
@@ -134,6 +132,8 @@ const handleWsMessage = (event) => {
 }
 
 const getRates: GetRates = (webSocket) => (parameters, onRatesCb) => {
+  const {anchorDestination} = parameters
+  const lastResponse = {}
   lastRequest = createQuery(parameters)
 
   return new Promise((resolve) => {
@@ -141,15 +141,24 @@ const getRates: GetRates = (webSocket) => (parameters, onRatesCb) => {
       if (response.status?.complete) {
         lastRequest = ''
 
-        resolve({
-          ...lastResponse,
-          status: {complete: true}
-        })
+        resolve(lastResponse)
       } else {
-        lastResponse = response
+        const current = {}
+
+        const anchorHitRate = response.results.find(
+          ({id}) => id === anchorDestination
+        )
+
+        if (anchorHitRate) {
+          current.anchorHitRate = anchorHitRate
+          lastResponse.anchorHitRate = anchorHitRate
+        } else {
+          current.hitsRates = response.results
+          lastResponse.hitsRates = response.results
+        }
 
         if (typeof onRatesCb === 'function') {
-          onRatesCb(lastResponse)
+          onRatesCb(current)
         }
       }
     }

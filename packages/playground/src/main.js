@@ -87,6 +87,7 @@ const run = async () => {
   // log('Search: load next page finish', nextPage)
 
   window.Sapi = {
+    client,
     search
   }
 }

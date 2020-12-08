@@ -39,6 +39,15 @@ export type PlaceSearchWithRatesResponse = {
   results: PlaceSearchWithRatesResults
 }
 
+type SearchResults = {
+  anchor: any
+  results: any
+}
+
+type SearchResultsWithRates = SearchResults & {
+  rates: any
+}
+
 export type Search = (
   parameters: PlaceSearchWithRatesParameters,
   onHotelsCb?: OnHotelsCb,
@@ -56,8 +65,9 @@ const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
   }
 }
 
-const generateDestinationString = (hits: Hit[]): string =>
-  hits.map((hit) => hit.objectID).join(',')
+const generateDestinationString = (hits: Hit[]): string => {
+  return hits.map((hit) => hit.objectID).join(',')
+}
 
 export type SearchType =
   | 'insidePolygon'
@@ -75,12 +85,18 @@ const getSearchType = (
   return 'aroundLocation'
 }
 
-const getDataFromStaticResults = (staticResults = {}) => {
+const getDataFromStaticResults = (staticResults = {}, anchorHit: any) => {
   const {facets, hits, length, nbHits, offset} = staticResults
+
+  // Remove AnchorHit from results
+  const hitsFiltered = anchorHit
+    ? hits.filter((hit) => hit.objectID !== anchorHit.objectID)
+    : hits
 
   return {
     facets,
-    hits,
+    hits: hitsFiltered,
+    anchorHit,
     length,
     nbHits,
     offset
@@ -125,7 +141,7 @@ export const search = (base: Base): Search => async (
 
   const searchFn = staticSearch(algoliaClient, options, hsoConfig)
 
-  const runSearch = async (offset = 0) => {
+  const runSearch = async (offset = 0): Promise<SearchResultsWithRates> => {
     const searchParameters: StaticSearchParameters = {
       ...parameters,
       offset
@@ -146,26 +162,24 @@ export const search = (base: Base): Search => async (
         break
     }
 
-    const staticResults = await searchFn(searchParameters)
+    const results = await searchFn(searchParameters)
 
-    const output: Record<string, unknown> = {
+    const staticOutput: SearchResults = {
       anchor,
-      results: getDataFromStaticResults(staticResults)
-    }
-
-    if (anchorHit) {
-      output.anchorHit = anchorHit
+      results: getDataFromStaticResults(results, anchorHit)
     }
 
     if (typeof onHotelsCb === 'function') {
-      onHotelsCb({...output})
+      onHotelsCb(staticOutput)
     }
 
+    let ratesResults
+
     if (rates) {
-      const ratesResults = await raaClient.getRates(
+      ratesResults = await raaClient.getRates(
         {
-          destination: generateDestinationString(staticResults?.hits),
-          highlightedHotelID: anchorHit?.objectID,
+          destination: generateDestinationString(staticOutput.results.hits),
+          anchorDestination: anchorHit?.objectID,
           checkIn,
           checkOut,
           rooms,
@@ -177,42 +191,46 @@ export const search = (base: Base): Search => async (
         onRatesCb
       )
 
-      output.rates = ratesResults.results
-
       if (typeof onComleateCb === 'function') {
-        onComleateCb(output)
+        onComleateCb({
+          ...staticOutput,
+          rates: ratesResults
+        })
       }
     }
 
-    return output
+    return {
+      ...staticOutput,
+      rates: rates ? ratesResults : undefined
+    }
   }
 
   const searchResults = await runSearch(offset)
 
   return {
-    getHits: () => searchResults.results,
+    getHits: () => searchResults.results.hits,
     getAnchor: () => searchResults.anchor,
-    getAnchorHit: () => searchResults.anchorHit,
-    getRates: (hitId?: SVGStringList) => {
-      if (!hitId) {
-        return searchResults.rates
-      }
-
-      const hitRates = searchResults.rates.find(
-        (hitRates) => hitRates.id === hitId
-      )
-
-      return hitRates
-    },
-    loadRates: (hitId: string) => {
+    getAnchorHit: () => searchResults.results.anchorHit,
+    getRates: () => searchResults.rates,
+    getHitsRates: () => searchResults.rates.hitsRates,
+    getAnchorHitRate: () => searchResults.rates.anchorHitRate,
+    loadRates: async (hitId: string) => {
       if (!hitId) {
         throw new Error('Hit id must be provided')
       }
 
-      const destination = hitId && hitId.toString()
+      let isAnchor = false
+      let anchorDestination
+      const destination = hitId
 
-      return raaClient.getRates({
+      if (hitId === anchorHit?.objectID) {
+        isAnchor = true
+        anchorDestination = hitId
+      }
+
+      const rates = await raaClient.getRates({
         destination,
+        anchorDestination,
         checkIn,
         checkOut,
         rooms,
@@ -222,6 +240,12 @@ export const search = (base: Base): Search => async (
         country,
         getAllOffers: true
       })
+
+      if (isAnchor) {
+        return rates.anchorHitRate
+      }
+
+      return rates.hitsRates.find(({id}) => id === hitId)
     },
     getHitsWithRates: () => {
       return {
