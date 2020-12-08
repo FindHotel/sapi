@@ -1,10 +1,15 @@
 import sapi from '@findhotel/sapi'
 
-const getSearchParameter = (name) => {
+const getSearchParameter = (name, isMultiValue) => {
   const queryString = window.location.search
   const urlParameters = new URLSearchParams(queryString)
+  const urlParameterArray = urlParameters.getAll(name) || []
 
-  return urlParameters.get(name) || ''
+  if (urlParameterArray.length === 0) return undefined
+
+  return urlParameterArray.length === 1 && !isMultiValue
+    ? urlParameterArray[0]
+    : urlParameterArray
 }
 
 const createLogger = () => {
@@ -47,9 +52,19 @@ const run = async () => {
     placeId: getSearchParameter('placeId'),
     checkIn: getSearchParameter('checkIn'),
     checkOut: getSearchParameter('checkOut'),
-    starRatings: getSearchParameter('starRatings'),
-    guestRatings: getSearchParameter('guestRatings'),
+    sortField: getSearchParameter('sortField'),
+    sortOrder: getSearchParameter('sortOrder'),
     rooms: getSearchParameter('rooms') || '2',
+    filters: {
+      starRating: getSearchParameter('starRatings', true),
+      guestRating: getSearchParameter('guestRatings', true),
+      propertyTypes: getSearchParameter('propertyTypes', true),
+      facilities: getSearchParameter('features', true),
+      themes: getSearchParameter('themes', true),
+      noHostels: getSearchParameter('noHostels'),
+      priceMin: getSearchParameter('priceMin'),
+      priceMax: getSearchParameter('priceMax')
+    },
     rates: true
     // BoundingBox: [
     //   22.150523643792884,
@@ -88,7 +103,7 @@ const run = async () => {
 
   window.Sapi = {
     client,
-    search
+    currentSearch: search
   }
 }
 

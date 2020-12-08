@@ -40,7 +40,7 @@ type ConfigSearchType = 'place_search' | 'hotel_search'
 
 jexl.addTransform('map', (array, s) => array.map((x) => s.replace(/%s/g, x)))
 
-const evaluateConfig = (rules, context): SearchConfig => {
+const evaluateConfig = (rules, context): string[] => {
   let filters = []
 
   rules.some((rule) => {
@@ -59,11 +59,11 @@ const evaluateConfig = (rules, context): SearchConfig => {
 export const hsoConfigObjectToString = (
   configs: SearchConfigObject[],
   searchType: ConfigSearchType,
-  parameters: PlaceSearchParameters
-): SearchConfig => {
+  context: Record<string, unknown>
+): string[] => {
   const config = configs.find(({objectID}) => objectID === searchType)
 
-  return evaluateConfig(config?.filters, parameters)
+  return evaluateConfig(config?.filters, context)
 }
 
 export const getLovAttributesToRetrive = (language = 'en'): string[] => {

@@ -8,16 +8,34 @@
 
 	<style>
 		body {
-			font-family: 'Helvetica Neue', Arial, sans-serif;
+			font-family: Arial, sans-serif;
 			color: #333;
 			font-weight: 300;
+			font-size: 12px;
 		}
 	</style>
 </head>
 
 <body>
 	<h1>SAPI SDK Playground</h1>
-	<h5>Please use browser console to see the results</h5>
+	<h3>Please use browser console to see the results</h3>
+	<br />
+	<p>You can run search manually in the console:</p>
+	<code>
+		const search = await Sapi.client.search({
+			<br />&nbsp;&nbsp;checkIn: "2021-01-08",
+			<br />&nbsp;&nbsp;checkOut:"2021-01-10",
+			<br />&nbsp;&nbsp;rooms:"2",
+			<br />&nbsp;&nbsp;rates: true
+			<br />})
+		<br />
+		<br />
+		const results = search.getHitsWithRates()
+
+		<br />
+		<br />
+		const nextPage = await search.loadMore()
+	</code>
 	<script src='bundle.js'></script>
 </body>
 

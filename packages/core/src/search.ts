@@ -136,7 +136,11 @@ export const search = (base: Base): Search => async (
   const hsoConfig = hsoConfigObjectToString(
     configs.hso,
     placeId ? 'place_search' : 'hotel_search',
-    parameters
+    {
+      anchorHotel: anchorHit,
+      searchParameters: parameters
+      // CheckInNights: '201212-1' TODO: implement it
+    }
   )
 
   const searchFn = staticSearch(algoliaClient, options, hsoConfig)

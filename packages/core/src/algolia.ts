@@ -2,6 +2,8 @@ import {SapiClientOptions, AlgoliaClient} from '.'
 import {HsoConfig} from './configs'
 import {SearchType} from './search'
 
+import {generateSortByPriceFilters, generatePriceFilter} from './pricing'
+
 const DEFAULT_RADIUS = 20000
 const DEFAULT_PRECISION = 5000
 
@@ -26,14 +28,18 @@ export type SearchParameters = {
   hotelId?: string
   length?: number
   offset?: number
-  features?: string | string[]
-  starRatings?: string | string[]
-  propertyTypes?: string | string[]
-  guestRatings?: string | string[]
   sortField?: string
-  noHostels?: string
+
   searchType?: SearchType
   boundingBox?: number[]
+  filters: {
+    themes?: string | string[]
+    facilities?: string | string[]
+    starRating?: string | string[]
+    propertyTypes?: string | string[]
+    guestRating?: string | string[]
+    noHostels?: string
+  }
 }
 
 export type StaticSearchParameters = SearchParameters & {
@@ -88,33 +94,17 @@ export const getIndexName = (index: IndexType): string => {
   return indexName
 }
 
-const STEP = 1
-const PRICE_SORT_WEIGHT = 100
-const PRICE_BUCKETS_COUNT = 31
-
-export const generateSortByPriceFilters = (
-  step: number = STEP,
-  bucketsCount: number = PRICE_BUCKETS_COUNT
-): string[] => {
-  const filters = []
-
-  for (let i = bucketsCount; i > 0; --i) {
-    const score = (bucketsCount + 1 - i) * step * PRICE_SORT_WEIGHT
-    filters.push(`pricing.minRateBkt:${i * step}<score=${score}>`)
-  }
-
-  return filters
-}
-
 const buildFacetFilters = (parameters) => {
-  const {facilities, starRating, propertyTypeId} = parameters
+  const {facilities, starRating, propertyTypeId, themeIds} = parameters
 
-  const propertyTypeIdFilter = propertyTypeId && [
+  const propertyTypeIdFilter = propertyTypeId?.length && [
     `propertyTypeId:${propertyTypeId}`
   ]
 
   const facilitiesFilter =
     facilities && facilities.map((item) => `facilities:${item}`)
+
+  const themeIdsFilter = themeIds && themeIds.map((item) => `themeIds:${item}`)
 
   const starRatingFilter =
     starRating &&
@@ -127,9 +117,10 @@ const buildFacetFilters = (parameters) => {
 
   const res = []
 
-  if (facilitiesFilter) res.push(...facilitiesFilter)
-  if (starRatingFilter) res.push(starRatingFilter)
-  if (propertyTypeIdFilter) res.push(propertyTypeIdFilter)
+  if (facilitiesFilter?.length) res.push(...facilitiesFilter)
+  if (starRatingFilter?.length) res.push(starRatingFilter)
+  if (propertyTypeIdFilter?.length) res.push(propertyTypeIdFilter)
+  if (themeIdsFilter?.length) res.push(...themeIdsFilter)
 
   return res
 }
@@ -137,7 +128,7 @@ const buildFacetFilters = (parameters) => {
 const buildNumericFilters = (parameters) => {
   const {guestRating} = parameters
 
-  if (guestRating) {
+  if (guestRating?.length) {
     return [`guestRating.overall>=${guestRating}`]
   }
 }
@@ -172,9 +163,27 @@ const buildOptionalFilters = (
   hsoConfig: HsoConfig,
   parameters: BuildOptionalFiltersParameters
 ): OptionalFiltes => {
-  return parameters.sortField === 'price'
-    ? [...hsoConfig, ...generateSortByPriceFilters()]
-    : hsoConfig
+  const {priceMin, priceMax, checkIn, checkOut, sortField} = parameters
+  let optionalFilters = [...hsoConfig]
+
+  if (sortField === 'price') {
+    optionalFilters = [...optionalFilters, ...generateSortByPriceFilters()]
+  }
+
+  if (priceMin || priceMax) {
+    const priceFilter = generatePriceFilter({
+      priceMin,
+      priceMax,
+      priceBucketWidth: 12, // TODO: get real priceBucketWidth
+      exchangeRate: 1, // TODO: get real rate
+      checkIn,
+      checkOut
+    })
+
+    optionalFilters = [...optionalFilters, ...priceFilter]
+  }
+
+  return optionalFilters
 }
 
 const buildHotelAttributesToRetrieve = (language = 'en'): string[] => {
@@ -281,40 +290,58 @@ export const staticSearch = (
 
   const {language, pageSize} = options
   const {
-    features,
-    starRatings,
-    propertyTypes,
-    guestRatings,
+    checkIn,
+    checkOut,
     sortField,
-    noHostels,
     offset = 0,
     length = pageSize,
     boundingBox,
     polygon,
-    geolocation
+    geolocation,
+    filters = {}
   } = parameters
 
+  const {
+    facilities,
+    starRating,
+    guestRating,
+    propertyTypes,
+    themes,
+    priceMin,
+    priceMax,
+    noHostels
+  } = filters
+
   const facetFilters = buildFacetFilters({
-    facilities: features,
-    starRating: starRatings,
-    propertyTypeId: propertyTypes
+    facilities,
+    starRating,
+    propertyTypeId: propertyTypes,
+    themeIds: themes
   })
 
   const numericFilters = buildNumericFilters({
-    guestRating: guestRatings
+    guestRating
   })
 
   const facets = buildFacets()
 
-  const filters = buildFilters(noHostels)
+  const algoliaFilters = buildFilters(noHostels)
 
-  const optionalFilters = buildOptionalFilters(hsoConfig, {sortField})
+  const optionalFilters = buildOptionalFilters(hsoConfig, {
+    sortField,
+    priceMin,
+    priceMax,
+    priceBucketWidth: 12, // TODO: get real priceBucketWidth
+    exchangeRate: 1, // TODO: get real rate
+    checkIn,
+    checkOut
+  })
 
   const request: AlgoliaRequest = {
     length,
     offset,
     facets,
-    filters,
+    filters: algoliaFilters,
     numericFilters,
     facetFilters,
     attributesToRetrieve: buildHotelAttributesToRetrieve(language),
