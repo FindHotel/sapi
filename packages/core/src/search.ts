@@ -249,9 +249,12 @@ export const search = (base: Base): Search => async (
     },
     getHitsWithRates: () => {
       return {
-        ...searchResults.results,
-        results: searchResults.results.hits.map((hit) =>
-          augmentHitWithRates(hit, searchResults.rates)
+        anchorHit: {
+          ...searchResults.results.anchorHit,
+          rates: searchResults.rates.anchorHitRate
+        },
+        hits: searchResults.results.hits.map((hit) =>
+          augmentHitWithRates(hit, searchResults.rates.hitsRates)
         )
       }
     },
