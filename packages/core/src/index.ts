@@ -54,6 +54,9 @@ const getListOfValues = (base?: Base) => () => {
   return base?.configs?.lov
 }
 
+/**
+ * @returns a string `yyyy-mm-dd-lengthOfStay`
+ */
 const getConfig = (base?: Base) => () => {
   return base?.configs
 }
