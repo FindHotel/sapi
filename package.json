@@ -20,7 +20,7 @@
     "typescript": "tsc",
     "typescript:declarations": "tsc --outDir dist/lib --declarationDir dist/types --declaration true --emitDeclarationOnly",
     "typescript:watch": "tsc --watch",
-    "install:all": "cd packages/core && npm install && cd ../playground && npm install && cd ../../ && npm install",
+    "install:all": "lerna bootstrap",
     "playground": "cd packages/playground && npm run dev"
   },
   "repository": {
