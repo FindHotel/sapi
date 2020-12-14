@@ -1,4 +1,4 @@
-import {AlgoliaClient, SapiClientOptions} from '.'
+import {AlgoliaClient, SapiClientOptions, Base} from '.'
 
 import {Rates, OnRatesCb} from './raa'
 
@@ -13,15 +13,23 @@ import {
 
 import {getFilterFromConfig} from './configs'
 
+/** Callback for when static hotels are loaded */
 type OnHotelsCb = (hotels: PlaceSearchResponse) => void
 
-type OnComleteCb = (response: PlaceSearchWithRatesResponse) => void
+/** Callback for when all hotels are offers are loaded */
+type onCompleteCb = (response: PlaceSearchWithRatesResponse) => void
 
-export type PlaceSearchWithRatesParameters = PlaceSearchParameters & {
+export type RateParameters = {
+  /** Check in date in format: `yyyy-mm-dd` */
   checkIn: string
+  /** Check out date in format: `yyyy-mm-dd` */
   checkOut: string
+  /** Room string in format: `room|occupancy` */
   rooms: string
 }
+
+export type PlaceSearchWithRatesParameters = PlaceSearchParameters &
+  RateParameters
 
 type HitWithRates = Hit & {
   rates?: Rates
@@ -41,7 +49,7 @@ export type Search = (
   parameters: PlaceSearchWithRatesParameters,
   onHotelsCb?: OnHotelsCb,
   onRatesCb?: OnRatesCb,
-  onComleteCb?: OnComleteCb
+  onCompleteCb?: onCompleteCb
 ) => Promise<PlaceSearchWithRatesResponse>
 
 const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
@@ -56,11 +64,11 @@ const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
 const generateDestinationString = (hits: Hit[]): string =>
   hits.map((hit) => hit.objectID).join(',')
 
-export const search = (base): Search => async (
+export const search = (base: Base): Search => async (
   parameters,
   onHotelsCb,
   onRatesCb,
-  onComleteCb
+  onCompleteCb
 ) => {
   const {
     algoliaClient,
@@ -68,7 +76,12 @@ export const search = (base): Search => async (
     options,
     configs: {hso}
   } = base
-  const {checkIn, checkOut, rooms, ...placeSearchParameters} = parameters
+  const {
+    checkIn,
+    checkOut,
+    rooms,
+    ...placeSearchParameters
+  }: PlaceSearchWithRatesParameters = parameters
   const {anonymousId, language, currency, country} = options
 
   const searchConfig = getFilterFromConfig(
@@ -111,8 +124,8 @@ export const search = (base): Search => async (
     }
   }
 
-  if (typeof onComleteCb === 'function') {
-    onComleteCb(result)
+  if (typeof onCompleteCb === 'function') {
+    onCompleteCb(result)
   }
 
   return {

@@ -22,6 +22,7 @@ export type PlaceMeta = {
 }
 
 export type PlaceSearchParameters = {
+  /** Place Id */
   placeId: string
   length?: number
   offset?: number
@@ -30,7 +31,8 @@ export type PlaceSearchParameters = {
   propertyTypes?: string | string[]
   guestRatings?: string | string[]
   sortField?: string
-  noHostels?: string
+  /** Whether to filter out hostels from results. Defaults to `false` */
+  noHostels?: boolean
 }
 
 export type Hit = {

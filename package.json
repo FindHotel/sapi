@@ -17,6 +17,8 @@
     "__prepare": "npm run build",
     "rollup": "rollup -c",
     "rollup:watch": "npm run clean:dist && rollup -c --watch",
+    "typedoc": "lerna run typedoc",
+    "typedoc:publish": " aws s3 cp packages/core/docs/ s3://fh-search/metrics/sapi/typedoc --recursive",
     "typescript": "tsc",
     "typescript:watch": "tsc --watch",
     "install:all": "cd packages/core && npm install && cd ../playground && npm install && cd ../../ && npm install",
@@ -46,6 +48,7 @@
     "rollup-plugin-terser": "^7.0.2",
     "ts-jest": "^26.4.4",
     "tslib": "^2.0.3",
+    "typedoc": "^0.19.2",
     "typescript": "^4.1.2",
     "xo": "^0.35.0"
   }

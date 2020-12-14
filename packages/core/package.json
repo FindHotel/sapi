@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "jest",
+    "typedoc": "typedoc --out docs src --ignoreCompilerErrors --theme minimal --stripInternal",
     "typescript": "tsc",
     "typescript:watch": "tsc --watch"
   },

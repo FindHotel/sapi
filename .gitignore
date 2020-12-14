@@ -6,6 +6,8 @@
 
 # production
 /dist
+/docs
+/packages/*/docs
 
 # misc
 .DS_Store
