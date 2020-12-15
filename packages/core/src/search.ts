@@ -1,4 +1,4 @@
-import {AlgoliaClient, SapiClientOptions, Base} from '.'
+import {Base} from '.'
 
 import {Rates, OnRatesCb} from './raa'
 
@@ -110,7 +110,15 @@ export const search = (base: Base): Search => async (
   onCompleteCb
 ) => {
   const {algoliaClient, raaClient, options, configs} = base
-  const {anonymousId, language, currency, country, pageSize} = options
+  const {
+    anonymousId,
+    language,
+    fallBackLanguages,
+    currency,
+    country,
+    pageSize
+  } = options
+
   const {
     searchType,
     placeId,
@@ -123,11 +131,13 @@ export const search = (base: Base): Search => async (
     boundingBox
   } = parameters
 
+  const languages = [language, ...fallBackLanguages]
+
   let loadMoreOffset = 0
 
   const {anchor, anchorHit} = await getAnchor(
     algoliaClient,
-    options
+    languages
   )({
     placeId,
     hotelId
@@ -194,13 +204,13 @@ export const search = (base: Base): Search => async (
         },
         onRatesCb
       )
+    }
 
-      if (typeof onCompleteCb === 'function') {
-        onCompleteCb({
-          ...staticOutput,
-          rates: ratesResults
-        })
-      }
+    if (typeof onCompleteCb === 'function') {
+      onCompleteCb({
+        ...staticOutput,
+        rates: ratesResults
+      })
     }
 
     return {

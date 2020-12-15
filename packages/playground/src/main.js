@@ -30,7 +30,8 @@ const run = async () => {
    */
   const client = await sapi('efa703d5c0057a24487bc9bdcb597770', {
     anonymousId: 'fd9dbb5f-b337-4dd7-b640-1f177d1d3caa',
-    language: 'en',
+    language: 'pt-BR',
+    fallBackLanguages: ['pt', 'en'],
     currency: 'EUR',
     country: 'NL'
   })

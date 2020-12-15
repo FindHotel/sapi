@@ -11,7 +11,8 @@ const RAA_ENDPOINT = 'wss://server.tst.eu.daedalus.fih.io/'
 
 export type AlgoliaClient = any
 
-/** Unique ID identifying users
+/**
+ * Unique ID identifying users
  * @default new UUID
  */
 export type anonymousId = string
@@ -26,6 +27,8 @@ export type SapiClientOptions = {
   anonymousId: anonymousId
   /** Language code for selected user language */
   language: string
+  /** Fallback languages code for selected user language */
+  fallBackLanguages: string[]
   /** Currency code for selected user currency */
   currency: string
   /** Currency code for selected user origin country */
@@ -36,13 +39,8 @@ export type SapiClientOptions = {
 export type Base = {
   algoliaClient: AlgoliaClient
   raaClient: any
-  configs: {
-    lov: any
-    hso: any
-    appConfig: any
-  }
+  configs: Record<string, unknown>
   options: SapiClientOptions & {
-    exchangeRate: number
     pageSize: number
   }
 }
@@ -67,14 +65,10 @@ const sapiClient = async (
   const base: Base = {
     algoliaClient,
     raaClient,
-    configs: {
-      ...configs,
-      appConfig: {}
-    },
+    configs,
     options: {
       ...options,
-      pageSize: 20,
-      exchangeRate: 1
+      pageSize: 20
     }
   }
 

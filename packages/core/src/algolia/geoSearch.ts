@@ -1,27 +1,13 @@
-import {SapiClientOptions, AlgoliaClient} from '.'
-import {HsoConfig} from './configs'
-import {SearchType} from './search'
+import {SapiClientOptions, AlgoliaClient} from '..'
+import {getIndexName, getLocalizedAttributes} from './utils'
+import {HsoConfig} from '../configs'
+import {SearchType} from '../search'
+import {Polygon, Location} from './types'
 
-import {generateSortByPriceFilters, generatePriceFilter} from './pricing'
+import {generateSortByPriceFilters, generatePriceFilter} from '../pricing'
 
 const DEFAULT_RADIUS = 20000
 const DEFAULT_PRECISION = 5000
-
-type IndexType = 'autocomplete' | 'hotel' | 'hotelranking' | 'lov' | 'currency'
-
-type Location = {
-  lat: number
-  lon: number
-  precision?: number
-  radius?: number
-}
-
-type Polygon = number[]
-
-export type Anchor = {
-  anchor: any
-  anchorHit: Hit
-}
 
 export type SearchParameters = {
   placeId?: string
@@ -44,7 +30,7 @@ export type SearchParameters = {
 
 export type StaticSearchParameters = SearchParameters & {
   boundingBox?: number[]
-  polygon?: Polygon[]
+  polygon?: Polygon
   geolocation?: Location
 }
 
@@ -77,22 +63,6 @@ type BuildOptionalFiltersParameters = {
 }
 
 type AlgoliaRequest = Record<string, unknown>
-
-export const getIndexName = (index: IndexType): string => {
-  const indexNames = {
-    autocomplete: 'prod_autocomplete_v2',
-    hotel: 'prod_hotel_v3',
-    hotelranking: 'prod_hotelranking_v1_os000002_hso_availability',
-    lov: 'prod_lov_v2',
-    currency: 'prod_curr_v1'
-  }
-
-  const indexName = indexNames[index]
-
-  if (!indexName) throw new TypeError(`Unknown index "${index}"`)
-
-  return indexName
-}
 
 const buildFacetFilters = (parameters) => {
   const {facilities, starRating, propertyTypeId, themeIds} = parameters
@@ -186,7 +156,14 @@ const buildOptionalFilters = (
   return optionalFilters
 }
 
-const buildHotelAttributesToRetrieve = (language = 'en'): string[] => {
+const getHotelAttributesToRetrieve = (languages: string[]): string[] => {
+  const localizedAttributes = getLocalizedAttributes(languages, [
+    'hotelName',
+    'placeADName',
+    'placeDN',
+    'address'
+  ])
+
   return [
     '_geoloc',
     'checkInTime',
@@ -205,78 +182,8 @@ const buildHotelAttributesToRetrieve = (language = 'en'): string[] => {
     'pricing',
     'sentiments',
     'tags',
-    `hotelName.${language}`,
-    `placeADName.${language}`,
-    `placeDN.${language}`,
-    `address.${language}`
+    ...localizedAttributes
   ]
-}
-
-const buildAutocompleteAttributesToRetrieve = (language = 'en'): string[] => {
-  return [
-    'objectType',
-    'placeType',
-    'placeCategory',
-    'objectID',
-    '_geoloc',
-    'priceBucketWidth',
-    'polygon',
-    `placeName.${language}`,
-    `placeADN.${language}`,
-    `placeDN.${language}`,
-    `hotelName.${language}`
-  ]
-}
-
-export const getAnchor = (
-  algoliaClient: AlgoliaClient,
-  options: SapiClientOptions
-) => async (parameters: {
-  placeId?: string
-  hotelId?: string
-}): Promise<Anchor> => {
-  const {language} = options
-  const {placeId, hotelId} = parameters
-  const autocompleteFacetFilters = []
-
-  if (hotelId) {
-    autocompleteFacetFilters.push(`objectID:hotel:${hotelId}`)
-  } else if (placeId) {
-    autocompleteFacetFilters.push(`objectID:place:${placeId}`)
-  }
-
-  const requests = [
-    {
-      indexName: getIndexName('autocomplete'),
-      params: {
-        facetFilters: [autocompleteFacetFilters],
-        attributesToRetrieve: buildAutocompleteAttributesToRetrieve(language),
-        attributesToHighlight: null
-      }
-    }
-  ]
-
-  if (hotelId) {
-    requests.push({
-      indexName: getIndexName('hotel'),
-      params: {
-        facetFilters: [[`objectID:${hotelId}`]],
-        attributesToRetrieve: buildHotelAttributesToRetrieve(language),
-        attributesToHighlight: null
-      }
-    })
-  }
-
-  const anchorResponse = await algoliaClient.search(requests)
-
-  const results = anchorResponse?.results || []
-  const anchorHits = results[0]?.hits || []
-  const hotelHits = results[1]?.hits || []
-
-  return {
-    anchor: anchorHits[0],
-    anchorHit: hotelHits[0]
-  }
 }
 
 export const staticSearch = (
@@ -288,7 +195,9 @@ export const staticSearch = (
 ): Promise<PlaceSearchResults> => {
   const index = algoliaClient.initIndex(getIndexName('hotel'))
 
-  const {language, pageSize} = options
+  const {language, fallBackLanguages, pageSize} = options
+  const languages = [language, ...fallBackLanguages]
+
   const {
     checkIn,
     checkOut,
@@ -344,7 +253,7 @@ export const staticSearch = (
     filters: algoliaFilters,
     numericFilters,
     facetFilters,
-    attributesToRetrieve: buildHotelAttributesToRetrieve(language),
+    attributesToRetrieve: getHotelAttributesToRetrieve(languages),
     attributesToHighlight: null,
     getRankingInfo: false,
     optionalFilters

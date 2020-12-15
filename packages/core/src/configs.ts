@@ -1,7 +1,7 @@
 import jexl from 'jexl'
 
 import {AlgoliaClient} from '.'
-import {getIndexName, PlaceSearchParameters} from './algolia'
+import {getIndexName} from './algolia'
 
 // Export type ListOfValuesItem = {
 //   id: number
@@ -17,10 +17,7 @@ export type ExchangeRatesResponseType = {
   hits: ExchangeRateResponseType[]
 }
 
-export type ExchangeRatesType = {
-  currencyExchangeRate?: number
-  currencyExchangeRateEur?: number
-}
+export type ExchangeRatesType = Record<string, unknown>
 
 type SearchConfigFilter = {
   criteria: string
