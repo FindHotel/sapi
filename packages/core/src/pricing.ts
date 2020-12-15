@@ -1,6 +1,5 @@
 import differenceInDays from 'date-fns/differenceInDays'
 import isWeekend from 'date-fns/isWeekend'
-import format from 'date-fns/format'
 
 const isNil = (value: any) => {
   return value === null || value === undefined
