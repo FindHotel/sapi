@@ -15,7 +15,7 @@ import {hsoConfigObjectToString} from './configs'
 
 type OnHotelsCb = (response: Record<string, unknown>) => void
 
-type OnComleateCb = (response: Record<string, unknown>) => void
+type OnCompleteCb = (response: Record<string, unknown>) => void
 
 export type PlaceSearchWithRatesParameters = SearchParameters & {
   checkIn: string
@@ -52,7 +52,7 @@ export type Search = (
   parameters: PlaceSearchWithRatesParameters,
   onHotelsCb?: OnHotelsCb,
   onRatesCb?: OnRatesCb,
-  onComleateCb?: OnComleateCb
+  onCompleteCb?: OnCompleteCb
   // ) => Promise<PlaceSearchWithRatesResponse>
 ) => Promise<any>
 
@@ -195,8 +195,8 @@ export const search = (base: Base): Search => async (
         onRatesCb
       )
 
-      if (typeof onComleateCb === 'function') {
-        onComleateCb({
+      if (typeof onCompleteCb === 'function') {
+        onCompleteCb({
           ...staticOutput,
           rates: ratesResults
         })
