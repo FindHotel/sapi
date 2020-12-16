@@ -8,9 +8,9 @@ export type AnchorResponse = {
   anchorHit: Hit
 }
 
-export type GetAnchorParameters = {
-  placeId?: string
-  hotelId?: string
+type GetAnchorParameters = {
+  placeId: string
+  hotelId: string
 }
 
 const getAutocompleteAttributesToRetrieve = (languages: string[]): string[] => {
@@ -66,8 +66,10 @@ const getHotelAttributesToRetrieve = (languages: string[]): string[] => {
 
 export const getAnchor = (
   algoliaClient: AlgoliaClient,
-  languages: string[] = ['en']
-) => async (parameters: GetAnchorParameters): Promise<AnchorResponse> => {
+  languages: string[]
+) => async (
+  parameters: Partial<GetAnchorParameters>
+): Promise<AnchorResponse> => {
   const {placeId, hotelId} = parameters
   const facetFilters = []
 
@@ -101,11 +103,9 @@ export const getAnchor = (
 
   const response = await algoliaClient.search(requests)
   const [anchorResponse, anchorHitResponse] = response?.results || []
-  const anchor = anchorResponse?.hits[0]
-  const anchorHit = anchorHitResponse?.hits[0]
 
   return {
-    anchor,
-    anchorHit
+    anchor: anchorResponse?.hits[0],
+    anchorHit: anchorHitResponse?.hits[0]
   }
 }

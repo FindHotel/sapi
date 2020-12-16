@@ -41,7 +41,7 @@ type TranslatedArray = Record<Language, string[]>
 
 export type Anchor = {
   objectID: string
-  objectType: string
+  objectType: 'hotel' | 'place'
   placeADN: TranslatedArray
   placeCategory: number
   placeDN: TranslatedArray
