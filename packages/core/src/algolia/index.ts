@@ -1,3 +1,3 @@
-export * from './anchor'
-export * from './geoSearch'
+export * from './get-anchor'
+export * from './geo-search'
 export * from './utils'

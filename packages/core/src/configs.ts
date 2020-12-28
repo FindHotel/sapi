@@ -3,13 +3,13 @@ import jexl from 'jexl'
 import {AlgoliaClient} from '.'
 import {getIndexName} from './algolia'
 
-// Export type ListOfValuesItem = {
-//   id: number
-//   categoryID?: number
-//   objectID: string
-//   value: Record<string, string | number>
-//   _rankingInfo?: Record<string, undefined>
-// }
+export type ListOfValuesItem = {
+  id: number
+  categoryID?: number
+  objectID: string
+  value: Record<string, string | number>
+  _rankingInfo?: Record<string, undefined>
+}
 
 type ExchangeRateResponseType = {objectID: string; rate: number}
 
@@ -17,7 +17,7 @@ export type ExchangeRatesResponseType = {
   hits: ExchangeRateResponseType[]
 }
 
-export type ExchangeRatesType = Record<string, unknown>
+export type ExchangeRatesType = Record<string, number>
 
 type SearchConfigFilter = {
   criteria: string
@@ -25,7 +25,7 @@ type SearchConfigFilter = {
   value: string[]
 }
 
-type SearchConfigObject = {
+export type HsoConfigObject = {
   objectID: string
   description: string
   filters: SearchConfigFilter[]
@@ -33,7 +33,13 @@ type SearchConfigObject = {
 
 export type HsoConfig = string[]
 
-type ConfigSearchType = 'place_search' | 'hotel_search'
+export type Configs = {
+  hso: HsoConfigObject[]
+  lov: ListOfValuesItem[]
+  exchangeRates: ExchangeRatesType
+}
+
+export type HsoConfigType = 'place_search' | 'hotel_search' | undefined
 
 jexl.addTransform('map', (array, s) => array.map((x) => s.replace(/%s/g, x)))
 
@@ -54,8 +60,8 @@ const evaluateConfig = (rules, context): string[] => {
 }
 
 export const hsoConfigObjectToString = (
-  configs: SearchConfigObject[],
-  searchType: ConfigSearchType,
+  configs: HsoConfigObject[],
+  searchType: HsoConfigType,
   context: Record<string, unknown>
 ): string[] => {
   const config = configs.find(({objectID}) => objectID === searchType)
@@ -76,8 +82,8 @@ export const getExchangeRatesFromResponse = (
   const eurToUsd = hits.find(({objectID}) => objectID === 'EUR')
 
   return {
-    currencyExchangeRate: currencyToUsd?.rate,
-    currencyExchangeRateEur: currencyToUsd?.rate / eurToUsd?.rate
+    currencyExchangeRate: currencyToUsd?.rate || 1,
+    currencyExchangeRateEur: currencyToUsd?.rate / eurToUsd?.rate || 1
   }
 }
 
@@ -85,7 +91,7 @@ export const getConfigs = (
   algoliaClient: AlgoliaClient,
   language: string,
   currency: string
-) => async () => {
+) => async (): Promise<Configs> => {
   const currencyFacetFilters = [`objectID:${currency}`, 'objectID:EUR']
 
   const requests = [

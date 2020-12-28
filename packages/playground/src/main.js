@@ -1,14 +1,21 @@
 import sapi from '@findhotel/sapi'
 
-const getSearchParameter = (name, isMultiValue) => {
+const getSearchParameter = (name, isMultiValue, type) => {
   const queryString = window.location.search
   const urlParameters = new URLSearchParams(queryString)
   const urlParameterArray = urlParameters.getAll(name) || []
 
   if (urlParameterArray.length === 0) return undefined
 
+  const typeCasts = {
+    number: (parameter) => parameter && Number(parameter),
+    string: (parameter) => parameter && parameter.toString()
+  }
+
   return urlParameterArray.length === 1 && !isMultiValue
-    ? urlParameterArray[0]
+    ? type
+      ? typeCasts[type](urlParameterArray[0])
+      : urlParameterArray[0]
     : urlParameterArray
 }
 
@@ -63,8 +70,8 @@ const run = async () => {
       facilities: getSearchParameter('features', true),
       themes: getSearchParameter('themes', true),
       noHostels: getSearchParameter('noHostels'),
-      priceMin: getSearchParameter('priceMin'),
-      priceMax: getSearchParameter('priceMax')
+      priceMin: getSearchParameter('priceMin', false, 'number'),
+      priceMax: getSearchParameter('priceMax', false, 'number')
     },
     rates: true
     // BoundingBox: [

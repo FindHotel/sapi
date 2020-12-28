@@ -4,7 +4,7 @@ import {search, Search} from './search'
 
 import {raa} from './raa'
 
-import {getConfigs} from './configs'
+import {getConfigs, Configs} from './configs'
 
 const ALGOLIA_APP_ID = '4UYGJP42KQ'
 const RAA_ENDPOINT = 'wss://server.tst.eu.daedalus.fih.io/'
@@ -33,13 +33,14 @@ export type SapiClientOptions = {
   currency: string
   /** Currency code for selected user origin country */
   country: string
+  /** Page size */
   pageSize: number
 }
 
 export type Base = {
   algoliaClient: AlgoliaClient
   raaClient: any
-  configs: Record<string, unknown>
+  configs: Configs
   options: SapiClientOptions & {
     pageSize: number
   }

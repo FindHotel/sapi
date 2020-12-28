@@ -14,7 +14,7 @@ const SOCKET_READY_STATES = {
 
 export type OnRatesCb = (rates: Rates[]) => void
 
-type GetRatesParameters = {
+export type GetRatesParameters = {
   destination: string
   anchorDestination: string | undefined
   checkIn: string

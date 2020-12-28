@@ -63,7 +63,7 @@ export const generatePriceFilter = ({
   checkOut: string | null | undefined
   exchangeRate: number | null | undefined
   margin?: number
-  priceBucketWidth: number
+  priceBucketWidth: number | null | undefined
   priceMax: number | null | undefined
   priceMin: number | null | undefined
 }): string[] => {
