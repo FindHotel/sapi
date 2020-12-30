@@ -1,11 +1,18 @@
 import {AlgoliaClient} from '..'
 import {getIndexName, getLocalizedAttributes} from './utils'
 import {HsoConfig} from '../configs'
-import {SearchType} from '../search'
-import {OptionalSearchParameters, Polygon, Location} from '../types'
+import {
+  OptionalSearchParameters,
+  Hit,
+  Location,
+  BoundingBox,
+  Polygon
+} from '../types'
 
 import {generateSortByPriceFilters, generatePriceFilter} from '../pricing'
 
+// TODO: move to const
+const HOSTEL_PROPERTY_TYPE_ID = '5'
 const DEFAULT_RADIUS = 20000
 const DEFAULT_PRECISION = 5000
 
@@ -17,83 +24,99 @@ interface Options {
   hsoConfig: HsoConfig
 }
 
-export interface GeoSearchParameters extends OptionalSearchParameters {
-  geolocation?: Location
-}
-
-export type Hit = {
-  objectID: string
-  hotelName: Record<string, string>
-  imageURIs: string[]
-}
-
-export type GeoSearchResults = {
-  length: number
-  nbHits: number
-  offset: number
-  hits: Hit[]
-}
-
-export type PlaceSearchResponse = {
-  results: GeoSearchResults
-}
-
 type OptionalFiltes = string[]
 
-type BuildOptionalFiltersParameters = {
+type FacetFilters = Array<string | string[]>
+
+type Facets = Record<string, number>
+
+interface BuildOptionalFiltersParameters {
   sortField?: string
-  checkIn: string
-  checkOut: string
+  checkIn?: string
+  checkOut?: string
   priceMin?: number
   priceMax?: number
   priceBucketWidth?: number
   exchangeRate: number
 }
 
-type AlgoliaGeoSearchRequest = Record<string, unknown>
-
-type NumericFiltersParameters = {
-  guestRating: string[]
+interface AlgoliaGeoSearchRequest {
+  length: number
+  offset: number
+  facets: string[]
+  filters: string
+  numericFilters: string[]
+  facetFilters: FacetFilters
+  attributesToRetrieve: string[]
+  attributesToHighlight: string[]
+  getRankingInfo: boolean
+  optionalFilters: OptionalFiltes
+  insideBoundingBox?: BoundingBox[]
+  insidePolygon?: Polygon
+  aroundLatLng?: string
+  aroundRadius?: number
+  aroundPrecision?: number
 }
 
-type FacetFiltersParameters = {
-  facilities: string[]
-  starRating: string[]
-  propertyTypeId: string[]
-  themeIds: string[]
+interface NumericFiltersParameters {
+  guestRating?: number[]
 }
 
-// TODO: move to const
-const HOSTEL_PROPERTY_TYPE_ID = '5'
+interface FacetFiltersParameters {
+  facilities?: number[]
+  starRating?: number[]
+  propertyTypeId?: number[]
+  themeIds?: number[]
+}
 
-const buildFacetFilters = (parameters: FacetFiltersParameters): string[][] => {
+export interface GeoSearchParameters extends OptionalSearchParameters {
+  geolocation?: Location
+}
+
+export interface GeoSearchResults {
+  facets: Facets
+  length: number
+  nbHits: number
+  offset: number
+  hits: Hit[]
+}
+
+const buildFacetFilters = (
+  parameters: FacetFiltersParameters
+): Array<string | string[]> => {
   const {facilities, starRating, propertyTypeId, themeIds} = parameters
 
-  const propertyTypeIdFilter = propertyTypeId?.map(
-    (item) => `propertyTypeId:${item}`
-  )
+  const facetFilters = []
 
-  const facilitiesFilter = facilities?.map((item) => `facilities:${item}`)
+  if (propertyTypeId?.length) {
+    const propertyTypeIdFilter = propertyTypeId?.map(
+      (item) => `propertyTypeId:${item}`
+    )
+    facetFilters.push(propertyTypeIdFilter)
+  }
 
-  const themeIdsFilter = themeIds?.map((item) => `themeIds:${item}`)
+  if (facilities?.length) {
+    const facilitiesFilter = facilities?.map((item) => `facilities:${item}`)
+    facetFilters.push(...facilitiesFilter)
+  }
 
-  const starRatingFilter =
-    starRating &&
-    [].concat(starRating).reduce((out, item) => {
-      return out.concat([
-        `starRating:${Number(item)}`,
-        `starRating:${Number(item) + 0.5}`
-      ])
-    }, [])
+  if (themeIds?.length) {
+    const themeIdsFilter = themeIds?.map((item) => `themeIds:${item}`)
+    facetFilters.push(...themeIdsFilter)
+  }
 
-  const response = []
+  if (starRating?.length) {
+    const starRatingFilter: string[] = []
 
-  if (facilitiesFilter?.length > 0) response.push(...facilitiesFilter)
-  if (starRatingFilter?.length > 0) response.push(starRatingFilter)
-  if (propertyTypeIdFilter?.length > 0) response.push(propertyTypeIdFilter)
-  if (themeIdsFilter?.length > 0) response.push(...themeIdsFilter)
+    starRating.forEach((rating) => {
+      starRatingFilter.push(`starRating:${Number(rating)}`)
+      starRatingFilter.push(`starRating:${Number(rating) + 0.5}`)
+    })
 
-  return response
+    facetFilters.push(starRatingFilter)
+  }
+
+  return facetFilters
 }
 
 const buildNumericFilters = ({
@@ -106,7 +129,7 @@ const buildNumericFilters = ({
   return []
 }
 
-const buildFilters = (noHostels?: string): string => {
+const buildFilters = (noHostels?: boolean): string => {
   let filters = 'isDeleted = 0'
 
   if (noHostels) {

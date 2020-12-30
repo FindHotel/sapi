@@ -21,6 +21,7 @@
   "homepage": "https://github.com/FindHotel/sapi#readme",
   "dependencies": {
     "algoliasearch": "^4.6.0",
+    "date-fns": "^2.16.1",
     "jexl": "^2.3.0",
     "robust-websocket": "^1.0.0"
   },

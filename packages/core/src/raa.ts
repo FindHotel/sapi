@@ -12,7 +12,7 @@ const SOCKET_READY_STATES = {
   CLOSED: 3
 }
 
-export type OnRatesCb = (rates: Rates[]) => void
+export type OnRatesCb = (rates: Rate[]) => void
 
 export type GetRatesParameters = {
   destination: string
@@ -39,13 +39,14 @@ export type Offer = {
   rateBreakdown: RateBreakdown
 }
 
-export type Rates = {
+export type Rate = {
   id: string
+  hasMoreOffers: boolean
   offers: Offer[]
 }
 
 export type RatesResponse = {
-  results: Rates[]
+  results: Rate[]
   status: {
     complete: boolean
   }
@@ -145,13 +146,13 @@ const getRates: GetRates = (webSocket) => (parameters, onRatesCb) => {
       } else {
         const current = {}
 
-        const anchorHitRate = response.results.find(
+        const anchorHotelRate = response.results.find(
           ({id}) => id === anchorDestination
         )
 
-        if (anchorHitRate) {
-          current.anchorHitRate = anchorHitRate
-          lastResponse.anchorHitRate = anchorHitRate
+        if (anchorHotelRate) {
+          current.anchorHotelRate = anchorHotelRate
+          lastResponse.anchorHotelRate = anchorHotelRate
         } else {
           current.hitsRates = response.results
           lastResponse.hitsRates = response.results

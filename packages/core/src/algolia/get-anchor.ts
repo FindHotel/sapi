@@ -2,6 +2,13 @@ import {AlgoliaClient} from '..'
 import {getIndexName, getLocalizedAttributes} from './utils'
 import {Anchor, Hit, Location} from '../types'
 
+interface GetAnchorParameters {
+  hotelId?: string
+  placeId?: string
+  query?: string
+  geolocation?: Location
+}
+
 export enum AnchorType {
   Hotel,
   Place,
@@ -14,13 +21,6 @@ export type AnchorObject = {
   anchorType: AnchorType
   anchor: Anchor
   anchorHotel: Hit
-}
-
-interface GetAnchorParameters {
-  hotelId?: string
-  placeId?: string
-  query?: string
-  geolocation?: Location
 }
 
 const autocompleteAttributesToRetrieve = (languages: string[]): string[] => {

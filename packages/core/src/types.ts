@@ -1,8 +1,3 @@
-export type SearchType =
-  | 'insidePolygon'
-  | 'insideBoundingBox'
-  | 'aroundLocation'
-
 export type Polygon = ReadonlyArray<readonly number[]>
 
 export type BoundingBox = readonly [number, number, number, number]
@@ -37,6 +32,7 @@ export interface OptionalSearchParameters {
   rates?: boolean
   filters?: FilterParameters
   offset?: number
+  length?: number
   boundingBox?: BoundingBox
   polygon?: Polygon
   getAllOffers?: boolean
@@ -96,7 +92,7 @@ type TranslatedString = Record<Language, string>
 
 type TranslatedArray = Record<Language, string[]>
 
-export type Anchor = {
+export interface Anchor {
   objectID: string
   objectType: 'hotel' | 'place'
   placeADN: TranslatedArray
@@ -109,7 +105,7 @@ export type Anchor = {
   _geoloc: Location
 }
 
-export type Hit = {
+export interface Hit {
   address: TranslatedString
   checkInTime: string
   checkOutTime: string
