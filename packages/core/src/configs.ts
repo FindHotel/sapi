@@ -103,7 +103,7 @@ export const filterFromHsoConfig = (
  * @param hits
  */
 const exchangeRatesFromResponse = (hits: ExchangeRateHit[]): ExchangeRates => {
-  const rates: Record<string, number> = {}
+  const rates: ExchangeRates = {}
 
   hits.forEach(({objectID, rate}) => {
     rates[objectID] = rate
