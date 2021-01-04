@@ -46,6 +46,8 @@ export type Configs = {
   exchangeRatesUSD: ExchangeRates
 }
 
+const LOV_HITS_PER_PAGE = 1000 // Max page size
+
 /**
  * Add Jexl map to replace placeholders with values
  */
@@ -142,7 +144,7 @@ export const getConfigs = (
     {
       indexName: getIndexName('lov'),
       params: {
-        hitsPerPage: 1000, // Max page size
+        hitsPerPage: LOV_HITS_PER_PAGE,
         attributesToRetrieve: getLovAttributesToRetrieve(languages),
         attributesToHighlight: [],
         getRankingInfo: true
