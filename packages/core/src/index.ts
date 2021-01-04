@@ -13,6 +13,7 @@ export type AlgoliaClient = any
 
 /**
  * Unique ID identifying users
+ *
  * @default new UUID
  */
 export type anonymousId = string
@@ -24,6 +25,7 @@ export type SapiClient = {
 
 /** Options for initializing the Search API client */
 export type SapiClientOptions = {
+  /** Unique ID identifying users */
   anonymousId: anonymousId
   /** Language code for selected user language */
   language: string
@@ -58,10 +60,14 @@ const sapiClient = async (
     throw new Error('Sapi client requires a valid client key')
   }
 
-  const {language, currency} = options
+  const {language, fallBackLanguages, currency} = options
   const algoliaClient = algoliasearch(ALGOLIA_APP_ID, clientKey)
   const raaClient = raa(RAA_ENDPOINT)
-  const configs = await getConfigs(algoliaClient, language, currency)()
+  const configs = await getConfigs(
+    algoliaClient,
+    [language, ...fallBackLanguages],
+    [currency, 'EUR']
+  )()
 
   const base: Base = {
     algoliaClient,

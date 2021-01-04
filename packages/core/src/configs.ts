@@ -1,9 +1,38 @@
 import jexl from 'jexl'
 
 import {AlgoliaClient} from '.'
-import {getIndexName} from './algolia'
+import {getIndexName, getLocalizedAttributes} from './algolia'
 
-export type ListOfValuesItem = {
+interface Response {
+  results: Array<{hits: any}>
+}
+
+interface ExchangeRateHit {
+  objectID: string
+  rate: number
+}
+
+type ExchangeRates = Record<string, number>
+
+type HsoConfigContext = Record<string, unknown>
+
+interface HsoConfigFilter {
+  criteria: string
+  description: string
+  value: string[]
+}
+
+export type HsoConfigType = 'place_search' | 'hotel_search' | undefined
+
+export interface HsoConfig {
+  objectID: string
+  description: string
+  filters: HsoConfigFilter[]
+}
+
+export type HsoFilter = string[]
+
+export interface ListOfValuesItem {
   id: number
   categoryID?: number
   objectID: string
@@ -11,88 +40,97 @@ export type ListOfValuesItem = {
   _rankingInfo?: Record<string, undefined>
 }
 
-type ExchangeRateResponseType = {objectID: string; rate: number}
-
-export type ExchangeRatesResponseType = {
-  hits: ExchangeRateResponseType[]
-}
-
-export type ExchangeRatesType = Record<string, number>
-
-type SearchConfigFilter = {
-  criteria: string
-  description: string
-  value: string[]
-}
-
-export type HsoConfigObject = {
-  objectID: string
-  description: string
-  filters: SearchConfigFilter[]
-}
-
-export type HsoConfig = string[]
-
 export type Configs = {
-  hso: HsoConfigObject[]
+  hso: HsoConfig[]
   lov: ListOfValuesItem[]
-  exchangeRates: ExchangeRatesType
+  exchangeRatesUSD: ExchangeRates
 }
 
-export type HsoConfigType = 'place_search' | 'hotel_search' | undefined
+/**
+ * Add Jexl map to replace placeholders with values
+ */
+jexl.addTransform('map', (array: string[], s: string): string[] =>
+  array.map((x) => s.replace(/%s/g, x))
+)
 
-jexl.addTransform('map', (array, s) => array.map((x) => s.replace(/%s/g, x)))
+/**
+ * Evaluate hso config filters
+ *
+ * @param filters
+ * @param context
+ */
+const evaluateHsoConfigFilters = (
+  filters: HsoConfigFilter[],
+  context: HsoConfigContext
+): HsoFilter => {
+  let result: HsoFilter = []
 
-const evaluateConfig = (rules, context): string[] => {
-  let filters = []
-
-  rules.some((rule) => {
+  filters.some((filter) => {
     try {
-      if (jexl.evalSync(rule.criteria, context)) {
-        filters = rule.value.map((line) => jexl.evalSync(line, context))
+      if (jexl.evalSync(filter.criteria, context)) {
+        result = filter.value.map((line) => jexl.evalSync(line, context))
       }
     } catch {}
 
-    return filters.length > 0
+    return result.length > 0
   })
 
-  return filters
+  return result
 }
 
-export const hsoConfigObjectToString = (
-  configs: HsoConfigObject[],
-  searchType: HsoConfigType,
-  context: Record<string, unknown>
-): string[] => {
-  const config = configs.find(({objectID}) => objectID === searchType)
+/**
+ * Generate filter from HSO config
+ *
+ * @param hsoConfig
+ * @param hsoConfigType
+ * @param context
+ */
+export const filterFromHsoConfig = (
+  hsoConfig: HsoConfig[],
+  hsoConfigType: HsoConfigType,
+  context: HsoConfigContext
+): HsoFilter => {
+  const config = hsoConfig.find(({objectID}) => objectID === hsoConfigType)
 
-  return evaluateConfig(config?.filters, context)
+  if (config?.filters === undefined) return []
+
+  return evaluateHsoConfigFilters(config.filters, context)
 }
 
-export const getLovAttributesToRetrive = (language = 'en'): string[] => {
-  return ['id', 'categoryID', 'objectID', `value.${language}`]
+/**
+ * Generate exchange rates object from response
+ *
+ * @param hits
+ */
+const exchangeRatesFromResponse = (hits: ExchangeRateHit[]): ExchangeRates => {
+  const rates: Record<string, number> = {}
+
+  hits.forEach(({objectID, rate}) => {
+    rates[objectID] = rate
+  })
+
+  return rates
 }
 
-export const getExchangeRatesFromResponse = (
-  currency: string,
-  response: ExchangeRatesResponseType
-): ExchangeRatesType => {
-  const {hits = []} = response
-  const currencyToUsd = hits.find(({objectID}) => objectID === currency)
-  const eurToUsd = hits.find(({objectID}) => objectID === 'EUR')
+/**
+ * Get LOV attributes to retrieve with localized attributes
+ *
+ * @param languages
+ */
+const getLovAttributesToRetrieve = (languages: string[]): string[] => {
+  const localizedAttributes = getLocalizedAttributes(languages, ['value'])
 
-  return {
-    currencyExchangeRate: currencyToUsd?.rate || 1,
-    currencyExchangeRateEur: currencyToUsd?.rate / eurToUsd?.rate || 1
-  }
+  return ['id', 'categoryID', 'objectID', ...localizedAttributes]
 }
 
 export const getConfigs = (
   algoliaClient: AlgoliaClient,
-  language: string,
-  currency: string
+  languages: string[],
+  currencies: string[]
 ) => async (): Promise<Configs> => {
-  const currencyFacetFilters = [`objectID:${currency}`, 'objectID:EUR']
+  const currencyFacetFilters = currencies.map(
+    (currency) => `objectID:${currency}`
+  )
 
   const requests = [
     {
@@ -105,7 +143,7 @@ export const getConfigs = (
       indexName: getIndexName('lov'),
       params: {
         hitsPerPage: 1000, // Max page size
-        attributesToRetrieve: getLovAttributesToRetrive(language),
+        attributesToRetrieve: getLovAttributesToRetrieve(languages),
         attributesToHighlight: [],
         getRankingInfo: true
       }
@@ -123,13 +161,12 @@ export const getConfigs = (
     }
   ]
 
-  const {
-    results: [hso, lov, exchangeRates]
-  } = await algoliaClient.search(requests)
+  const {results}: Response = await algoliaClient.search(requests)
+  const [hso, lov, exchangeRates] = results.map((result) => result.hits)
 
   return {
-    hso: hso?.hits,
-    lov: lov?.hits,
-    exchangeRates: getExchangeRatesFromResponse(currency, exchangeRates)
+    hso,
+    lov,
+    exchangeRatesUSD: exchangeRatesFromResponse(exchangeRates)
   }
 }

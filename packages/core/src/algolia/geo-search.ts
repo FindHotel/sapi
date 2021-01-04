@@ -1,6 +1,6 @@
 import {AlgoliaClient} from '..'
 import {getIndexName, getLocalizedAttributes} from './utils'
-import {HsoConfig} from '../configs'
+import {HsoFilter} from '../configs'
 import {
   OptionalSearchParameters,
   Hit,
@@ -21,7 +21,7 @@ interface Options {
   pageSize: number
   priceBucketWidth: number
   exchangeRate: number
-  hsoConfig: HsoConfig
+  hsoFilter: HsoFilter
 }
 
 type OptionalFiltes = string[]
@@ -140,7 +140,7 @@ const buildFilters = (noHostels?: boolean): string => {
 }
 
 const buildOptionalFilters = (
-  hsoConfig: HsoConfig,
+  hsoFilter: HsoFilter,
   parameters: BuildOptionalFiltersParameters
 ): OptionalFiltes => {
   const {
@@ -152,7 +152,7 @@ const buildOptionalFilters = (
     priceBucketWidth,
     exchangeRate
   } = parameters
-  let optionalFilters = [...hsoConfig]
+  let optionalFilters = [...hsoFilter]
 
   if (sortField === 'price') {
     const sortByPriceFilters = generateSortByPriceFilters()
@@ -226,7 +226,7 @@ export const geoSearch = (
     pageSize,
     priceBucketWidth,
     exchangeRate,
-    hsoConfig
+    hsoFilter
   } = options
 
   const {
@@ -265,7 +265,7 @@ export const geoSearch = (
     guestRating
   })
 
-  const optionalFilters = buildOptionalFilters(hsoConfig, {
+  const optionalFilters = buildOptionalFilters(hsoFilter, {
     checkIn,
     checkOut,
     sortField,

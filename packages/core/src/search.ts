@@ -15,9 +15,10 @@ import {
 } from './algolia'
 
 import {
-  hsoConfigObjectToString,
+  filterFromHsoConfig,
   HsoConfigType,
-  HsoConfigObject
+  HsoConfig,
+  HsoFilter
 } from './configs'
 
 import {Anchor, SearchParameters, Hit} from './types'
@@ -130,11 +131,11 @@ const getHsoConfigType = (anchorType: AnchorType): HsoConfigType => {
   }
 }
 
-const getHsoConfig = (
-  hso: HsoConfigObject[],
+const getHsoFilter = (
+  hso: HsoConfig[],
   searchParameters: SearchParameters,
   anchorObject: AnchorObject
-) => {
+): HsoFilter => {
   const {anchorType, anchorHotel} = anchorObject
   const {checkIn, checkOut} = searchParameters
   const hsoConfigType = getHsoConfigType(anchorType)
@@ -144,7 +145,7 @@ const getHsoConfig = (
     checkInNights: getCheckInNights(checkIn, checkOut)
   }
 
-  return hsoConfigObjectToString(hso, hsoConfigType, hsoConfigContext)
+  return filterFromHsoConfig(hso, hsoConfigType, hsoConfigContext)
 }
 
 const prepareGeoSearchParameters = (
@@ -205,8 +206,8 @@ const prepareRatesParameters = (
 
 export const search = (base: Base): Search => {
   const {algoliaClient, raaClient, options, configs} = base
-  const {hso, exchangeRates} = configs
-  const {language, fallBackLanguages, pageSize} = options
+  const {hso, exchangeRatesUSD} = configs
+  const {language, fallBackLanguages, pageSize, currency} = options
   const languages = [language, ...fallBackLanguages]
 
   return async (parameters, onHotelsCb, onRatesCb, onCompleteCb) => {
@@ -217,8 +218,8 @@ export const search = (base: Base): Search => {
     const geoSearchFn = geoSearch(algoliaClient, {
       languages,
       pageSize,
-      hsoConfig: getHsoConfig(hso, parameters, anchorObject),
-      exchangeRate: exchangeRates.currencyExchangeRate,
+      hsoFilter: getHsoFilter(hso, parameters, anchorObject),
+      exchangeRate: exchangeRatesUSD[currency],
       priceBucketWidth: anchor.priceBucketWidth
     })
 
