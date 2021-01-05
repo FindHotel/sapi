@@ -18,7 +18,7 @@ interface RaaOptions {
   country: string
 }
 
-export type GetRatesParameters = {
+type GetRatesParameters = {
   destination: string
   anchorDestination?: string
   checkIn: string
@@ -36,7 +36,7 @@ export type GetRatesParameters = {
   useAlternativeRaaKeys: boolean
 }
 
-export interface RatesResponse {
+interface RatesResponse {
   anchorHotelRate?: Rate
   hotelsRates?: Rate[]
 }
