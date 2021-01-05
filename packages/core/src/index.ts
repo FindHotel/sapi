@@ -61,8 +61,11 @@ const sapiClient = async (
   }
 
   const {language, fallBackLanguages, currency} = options
+
   const algoliaClient = algoliasearch(ALGOLIA_APP_ID, clientKey)
-  const raaClient = raa(RAA_ENDPOINT)
+
+  const raaClient = raa(RAA_ENDPOINT, options)
+
   const configs = await getConfigs(
     algoliaClient,
     [language, ...fallBackLanguages],

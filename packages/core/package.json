@@ -23,7 +23,7 @@
     "algoliasearch": "^4.6.0",
     "date-fns": "^2.16.1",
     "jexl": "^2.3.0",
-    "robust-websocket": "^1.0.0"
+    "reconnecting-websocket": "^4.4.0"
   },
   "devDependencies": {
     "@types/jexl": "^2.2.0",

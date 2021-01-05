@@ -40,7 +40,11 @@ const run = async () => {
     language: 'pt-BR',
     fallBackLanguages: ['pt', 'en'],
     currency: 'UAH',
-    country: 'NL'
+    country: 'NL',
+    includeLocalTaxes: true,
+    includeTaxes: true,
+    skipBackendAugmentation: false,
+    facetsEnabled: false
   })
 
   log('Client created')
@@ -73,6 +77,11 @@ const run = async () => {
       priceMin: getSearchParameter('priceMin', false, 'number'),
       priceMax: getSearchParameter('priceMax', false, 'number')
     },
+    cugDeals: 'signed_in, offline',
+    deviceCategory: 'desktop',
+    profileId: getSearchParameter('profile') ?? 'default',
+    searchId: '0edf6cf0ae429cd67fe5005c5dffa0b8951897a8',
+    useAlternativeRaaKeys: true,
     rates: true
     // BoundingBox: [
     //   22.150523643792884,

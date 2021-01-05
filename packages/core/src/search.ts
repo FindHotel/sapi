@@ -3,7 +3,7 @@ import format from 'date-fns/format'
 
 import {Base} from '.'
 
-import {Rate, OnRatesCb, GetRatesParameters} from './raa'
+import {Rate, OnRatesCb} from './raa'
 
 import {
   getAnchor,
@@ -47,22 +47,6 @@ type RatesResults = {
 
 type ResultsWithRates = StaticResults & {
   rates: RatesResults
-}
-
-interface RatesOptions {
-  anonymousId: string
-  language: string
-  currency: string
-  country: string
-}
-
-interface RatesParameters {
-  checkIn?: string
-  checkOut?: string
-  rooms?: string
-  dayDistance?: number
-  nights?: number
-  getAllOffers?: boolean
 }
 
 export type Search = (
@@ -176,34 +160,6 @@ const prepareGeoSearchParameters = (
 const generateDestinationString = (hits: Hit[]): string =>
   hits.map((hit) => hit.objectID).join(',')
 
-const prepareRatesParameters = (
-  parameters: RatesParameters,
-  options: RatesOptions,
-  destination: string,
-  anchorDestination?: string
-): GetRatesParameters => {
-  const {anonymousId, language, currency, country} = options
-  const {
-    checkIn = '',
-    checkOut = '',
-    rooms = '2',
-    getAllOffers = false
-  } = parameters
-
-  return {
-    destination,
-    anchorDestination,
-    checkIn,
-    checkOut,
-    rooms,
-    anonymousId,
-    language,
-    currency,
-    country,
-    getAllOffers
-  }
-}
-
 export const search = (base: Base): Search => {
   const {algoliaClient, raaClient, options, configs} = base
   const {hso, exchangeRatesUSD} = configs
@@ -243,12 +199,11 @@ export const search = (base: Base): Search => {
       let ratesResults
 
       if (parameters.rates) {
-        const ratesParameters = prepareRatesParameters(
-          parameters,
-          options,
-          generateDestinationString(results.hits),
-          anchorHotel?.objectID
-        )
+        const ratesParameters = {
+          destination: generateDestinationString(results.hits),
+          anchorDestination: anchorHotel?.objectID,
+          ...parameters
+        }
 
         ratesResults = await raaClient.getRates(ratesParameters, onRatesCb)
       }
@@ -271,10 +226,10 @@ export const search = (base: Base): Search => {
     return {
       getHits: () => searchResults.results.hits,
       getAnchor: () => searchResults.anchor,
-      getanchorHotel: () => searchResults.results.anchorHotel,
+      getAnchorHotel: () => searchResults.results.anchorHotel,
       getRates: () => searchResults.rates,
       getHitsRates: () => searchResults.rates.hitsRates,
-      getanchorHotelRate: () => searchResults.rates.anchorHotelRate,
+      getAnchorHotelRate: () => searchResults.rates.anchorHotelRate,
       loadRates: async (hitId: string) => {
         if (!hitId) {
           throw new Error('Hit id must be provided')
@@ -289,12 +244,11 @@ export const search = (base: Base): Search => {
           anchorDestination = hitId
         }
 
-        const ratesParameters = prepareRatesParameters(
-          parameters,
-          options,
+        const ratesParameters = {
           destination,
-          anchorDestination
-        )
+          anchorDestination,
+          ...parameters
+        }
 
         const rates = await raaClient.getRates({
           ...ratesParameters,

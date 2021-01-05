@@ -1,14 +1,6 @@
-export type Polygon = ReadonlyArray<readonly number[]>
-
-export type BoundingBox = readonly [number, number, number, number]
-
-export interface Location {
-  readonly lat: number
-  readonly lon: number
-  readonly precision?: number
-  readonly radius?: number
-}
-
+/**
+ * Search client types
+ */
 export interface FilterParameters {
   themes?: number[]
   chainIds?: number[]
@@ -36,6 +28,11 @@ export interface OptionalSearchParameters {
   boundingBox?: BoundingBox
   polygon?: Polygon
   getAllOffers?: boolean
+  cugDeals?: string
+  deviceCategory?: string
+  profileId?: string
+  searchId?: string
+  useAlternativeRaaKeys?: string
 }
 
 export interface PlaceSearchParameters extends OptionalSearchParameters {
@@ -59,6 +56,20 @@ export type SearchParameters =
   | HotelSearchParameters
   | LocationSearchParameters
   | QuerySearchParameters
+
+/**
+ * Algolia types
+ */
+export type Polygon = ReadonlyArray<readonly number[]>
+
+export type BoundingBox = readonly [number, number, number, number]
+
+export interface Location {
+  readonly lat: number
+  readonly lon: number
+  readonly precision?: number
+  readonly radius?: number
+}
 
 type GuestsRatingBreakdown =
   | 'cleanliness'
@@ -127,4 +138,48 @@ export interface Hit {
   tags: string[]
   themeIds: number[]
   _geoloc: Partial<Location>
+}
+
+/**
+ * RAA types
+ */
+export interface RateBreakdown {
+  baseRate: number
+  localTaxes: number
+  taxes: number
+}
+
+interface AnchorPriceRateBreakdown extends RateBreakdown {
+  calculatedTotalRate: number
+  nightlyRate: number
+}
+
+interface TopOfferData {
+  anchorPrice: number
+  anchorPriceNightly: number
+  offerIndexes: number[]
+}
+
+export interface Offer {
+  id: string
+  providerCode: string
+  rateBreakdown: RateBreakdown
+}
+
+export interface Rate {
+  anchorPriceRateBreakdown: AnchorPriceRateBreakdown
+  cheapestPriceRateBreakdown: RateBreakdown
+  fetchedAllOffers: boolean
+  hasMoreOffers: boolean
+  id: string
+  offers: Offer[]
+  topOfferData: TopOfferData
+}
+
+export interface RaaResponse {
+  errors: any[]
+  results: Rate[]
+  status: {
+    complete: boolean
+  }
 }
