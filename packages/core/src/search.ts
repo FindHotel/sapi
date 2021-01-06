@@ -69,6 +69,9 @@ export type Search = (
   onCompleteCb?: OnCompleteCb
 ) => Promise<Record<string, unknown>>
 
+const DEFAULT_ROOMS = '2'
+const DEFAULT_DEVICE_CATEGORY = 'desktop'
+
 const augmentHitWithRates = (hit: Hit, rates?: Rate[]): HitWithRates => {
   const hitRates = rates?.find((rate) => rate.id === hit.objectID)
 
@@ -169,9 +172,6 @@ const prepareGeoSearchParameters = (
 
   return parameters
 }
-
-const DEFAULT_ROOMS = '2'
-const DEFAULT_DEVICE_CATEGORY = 'desktop'
 
 const prepareSearchParameters = (
   parameters: ApiSearchParameters,

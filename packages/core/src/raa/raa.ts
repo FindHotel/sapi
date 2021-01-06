@@ -58,51 +58,26 @@ const createRaaRequest = (
   parameters: GetRatesParameters,
   options: RaaOptions
 ): string => {
-  const {
-    includeLocalTaxes,
-    includeTaxes,
-    skipBackendAugmentation,
-    facetsEnabled,
-    anonymousId,
-    language,
-    currency,
-    country
-  } = options
-
-  const {
-    destination,
-    checkIn,
-    checkOut,
-    rooms,
-    anchorDestination,
-    getAllOffers,
-    cugDeals,
-    deviceCategory,
-    profileId,
-    searchId,
-    useAlternativeRaaKeys
-  } = parameters
-
   const query = {
-    anonymousId,
-    checkIn,
-    checkOut,
-    currencyCode: currency,
-    destination,
-    getAllOffers,
-    highlightedHotelID: anchorDestination,
-    rooms,
-    languageCode: language,
-    userCountryCode: country,
-    cugDeals,
-    deviceCategory,
-    profileId,
-    searchId,
-    useAlternativeRaaKeys,
-    includeLocalTaxes,
-    includeTaxes,
-    skipBackendAugmentation,
-    facetsEnabled
+    checkIn: parameters.checkIn,
+    checkOut: parameters.checkOut,
+    destination: parameters.destination,
+    getAllOffers: parameters.getAllOffers,
+    highlightedHotelID: parameters.anchorDestination,
+    rooms: parameters.rooms,
+    cugDeals: parameters.cugDeals,
+    deviceCategory: parameters.deviceCategory,
+    profileId: parameters.profileId,
+    searchId: parameters.searchId,
+    useAlternativeRaaKeys: parameters.useAlternativeRaaKeys,
+    languageCode: options.language,
+    userCountryCode: options.country,
+    currencyCode: options.currency,
+    anonymousId: options.anonymousId,
+    includeLocalTaxes: options.includeLocalTaxes,
+    includeTaxes: options.includeTaxes,
+    skipBackendAugmentation: options.skipBackendAugmentation,
+    facetsEnabled: options.facetsEnabled
   }
 
   let queryString = ''
