@@ -225,23 +225,17 @@ export const geoSearch = (
     filters = {}
   } = parameters
 
-  const requestFilters = buildFilters(filters)
-  const facetFilters = buildFacetFilters(filters)
-  const numericFilters = buildNumericFilters(filters)
-  const optionalFilters = buildOptionalFilters(parameters, options)
-  const attributesToRetrieve = getHotelAttributesToRetrieve(options.languages)
-
   const searchRequest: AlgoliaGeoSearchRequest = {
     length,
     offset,
     facets,
-    filters: requestFilters,
-    numericFilters,
-    facetFilters,
-    attributesToRetrieve,
     attributesToHighlight: [],
     getRankingInfo: false,
-    optionalFilters
+    filters: buildFilters(filters),
+    numericFilters: buildNumericFilters(filters),
+    facetFilters: buildFacetFilters(filters),
+    attributesToRetrieve: getHotelAttributesToRetrieve(options.languages),
+    optionalFilters: buildOptionalFilters(parameters, options)
   }
 
   if (boundingBox) {
