@@ -2,41 +2,37 @@ import ReconnectingWebSocket from 'reconnecting-websocket'
 
 import {Rate, RaaResponse} from '../types'
 
-interface RaaClient {
+export interface RaaClient {
   getRates: GetRates
 }
 
 interface RaaOptions {
+  anonymousId: string
+  currency: string
+  country: string
+  language: string
   includeLocalTaxes?: boolean
   includeTaxes?: boolean
   skipBackendAugmentation?: boolean
   facetsEnabled?: boolean
   WebSocket?: any
-  anonymousId: string
-  language: string
-  currency: string
-  country: string
 }
 
-type GetRatesParameters = {
-  destination: string
+export interface GetRatesParameters {
   anchorDestination?: string
+  cugDeals?: string
+  getAllOffers?: boolean
+  profileId?: string
+  useAlternativeRaaKeys?: boolean
+  destination: string
   checkIn: string
   checkOut: string
   rooms: string
-  anonymousId: string
-  language: string
-  currency: string
-  country: string
-  getAllOffers: boolean
-  cugDeals: string
   deviceCategory: string
-  profileId: string
   searchId: string
-  useAlternativeRaaKeys: boolean
 }
 
-interface RatesResponse {
+export interface RatesResponse {
   anchorHotelRate?: Rate
   hotelsRates?: Rate[]
 }
@@ -45,7 +41,7 @@ export type OnRatesCb = (rates: RatesResponse) => void
 
 export type GetRates = (
   parameters: GetRatesParameters,
-  onRatesCb: OnRatesCb
+  onRatesCb?: OnRatesCb
 ) => Promise<RatesResponse>
 
 enum ReadyStates {

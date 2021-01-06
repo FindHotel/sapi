@@ -1,4 +1,11 @@
 /**
+ * Unique ID identifying users
+ *
+ * @default new UUID
+ */
+export type AnonymousId = string
+
+/**
  * Search client types
  */
 export interface FilterParameters {
@@ -32,7 +39,7 @@ export interface OptionalSearchParameters {
   deviceCategory?: string
   profileId?: string
   searchId?: string
-  useAlternativeRaaKeys?: string
+  useAlternativeRaaKeys?: boolean
 }
 
 export interface PlaceSearchParameters extends OptionalSearchParameters {
@@ -51,7 +58,7 @@ export interface QuerySearchParameters extends OptionalSearchParameters {
   query: string
 }
 
-export type SearchParameters =
+export type ApiSearchParameters =
   | PlaceSearchParameters
   | HotelSearchParameters
   | LocationSearchParameters

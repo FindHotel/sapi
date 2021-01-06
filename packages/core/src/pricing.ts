@@ -1,12 +1,11 @@
 import differenceInDays from 'date-fns/differenceInDays'
 import isWeekend from 'date-fns/isWeekend'
 
+import {dateToMiddayUTC} from './utils'
+
 const isNil = (value: any) => {
   return value === null || value === undefined
 }
-
-export const dateToMiddayUTC = (date: string): Date =>
-  new Date(`${date} 12:00:00 UTC`)
 
 const STEP = 1
 const PRICE_SORT_WEIGHT = 100

@@ -64,6 +64,8 @@ const run = async () => {
     placeId: getSearchParameter('placeId'),
     checkIn: getSearchParameter('checkIn'),
     checkOut: getSearchParameter('checkOut'),
+    dayDistance: getSearchParameter('dayDistance', false, 'number'),
+    nights: getSearchParameter('nights', false, 'number'),
     sortField: getSearchParameter('sortField'),
     sortOrder: getSearchParameter('sortOrder'),
     rooms: getSearchParameter('rooms') || '2',
@@ -83,12 +85,6 @@ const run = async () => {
     searchId: '0edf6cf0ae429cd67fe5005c5dffa0b8951897a8',
     useAlternativeRaaKeys: true,
     rates: true
-    // BoundingBox: [
-    //   22.150523643792884,
-    //   114.00821685791017,
-    //   22.445302681401593,
-    //   114.33780670166017
-    // ]
   }
 
   log('Search start')
@@ -107,16 +103,6 @@ const run = async () => {
   )
 
   log('Search done', search)
-  // Log('Search: get hits', search.getHits())
-  // log('Search: get rates', search.getRates())
-  // log('Search: get hits with rates', search.getHitsWithRates())
-
-  // const allRates = await search.loadRates('1055366')
-  // log('Search: load rates for hotelId = "1055366"', allRates)
-
-  // log('Search: load next page start')
-  // const nextPage = await search.loadMore()
-  // log('Search: load next page finish', nextPage)
 
   window.Sapi = {
     client,

@@ -37,14 +37,22 @@ export interface ListOfValuesItem {
   categoryID?: number
   objectID: string
   value: Record<string, string | number>
-  _rankingInfo?: Record<string, undefined>
+  _rankingInfo?: Record<string, number>
+}
+
+export interface DatesConfig {
+  daysFromNow: number
+  blockedDefaultDates: Set<string>
 }
 
 export type Configs = {
   hso: HsoConfig[]
   lov: ListOfValuesItem[]
   exchangeRatesUSD: ExchangeRates
+  dates: DatesConfig
 }
+
+export type GetConfig = () => Promise<Configs>
 
 const LOV_HITS_PER_PAGE = 1000 // Max page size
 
@@ -125,11 +133,20 @@ const getLovAttributesToRetrieve = (languages: string[]): string[] => {
   return ['id', 'categoryID', 'objectID', ...localizedAttributes]
 }
 
+const DAYS_FROM_NOW = 45
+
+const BLOCKED_DEFAULT_DATES = new Set([
+  '2021-01-03',
+  '2021-04-04',
+  '2021-02-14',
+  '2022-02-27'
+])
+
 export const getConfigs = (
   algoliaClient: AlgoliaClient,
   languages: string[],
   currencies: string[]
-) => async (): Promise<Configs> => {
+): GetConfig => async () => {
   const currencyFacetFilters = currencies.map(
     (currency) => `objectID:${currency}`
   )
@@ -169,6 +186,10 @@ export const getConfigs = (
   return {
     hso,
     lov,
-    exchangeRatesUSD: exchangeRatesFromResponse(exchangeRates)
+    exchangeRatesUSD: exchangeRatesFromResponse(exchangeRates),
+    dates: {
+      daysFromNow: DAYS_FROM_NOW,
+      blockedDefaultDates: BLOCKED_DEFAULT_DATES
+    }
   }
 }

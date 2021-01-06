@@ -2,31 +2,26 @@ import algoliasearch from 'algoliasearch'
 
 import {search, Search} from './search'
 
-import {raa} from './raa'
+import {raa, RaaClient} from './raa'
 
 import {getConfigs, Configs} from './configs'
+
+import {AnonymousId} from './types'
 
 const ALGOLIA_APP_ID = '4UYGJP42KQ'
 const RAA_ENDPOINT = 'wss://server.tst.eu.daedalus.fih.io/'
 
 export type AlgoliaClient = any
 
-/**
- * Unique ID identifying users
- *
- * @default new UUID
- */
-export type anonymousId = string
-
-export type SapiClient = {
+export interface SapiClient {
   search: Search
-  getConfig: any
+  getConfig: () => Configs
 }
 
 /** Options for initializing the Search API client */
-export type SapiClientOptions = {
+export interface SapiClientOptions {
   /** Unique ID identifying users */
-  anonymousId: anonymousId
+  anonymousId: AnonymousId
   /** Language code for selected user language */
   language: string
   /** Fallback languages code for selected user language */
@@ -37,18 +32,26 @@ export type SapiClientOptions = {
   country: string
   /** Page size */
   pageSize: number
+  /** Include or not local taxes based on localisation logic */
+  includeLocalTaxes?: boolean
+  /** Include or not taxes based on localisation logic */
+  includeTaxes?: boolean
+  /** Skip backend offers augmentation */
+  skipBackendAugmentation?: boolean
+  /** Enable raa faceting */
+  facetsEnabled?: boolean
 }
 
 export type Base = {
   algoliaClient: AlgoliaClient
-  raaClient: any
+  raaClient: RaaClient
   configs: Configs
   options: SapiClientOptions & {
     pageSize: number
   }
 }
 
-const getConfig = (base: Base) => () => {
+const getConfig = (base: Base) => (): Configs => {
   return base?.configs
 }
 

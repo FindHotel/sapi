@@ -1,4 +1,15 @@
+import hash from 'object-hash'
+
+import {anonymousId} from './types'
+
 type IndexType = 'autocomplete' | 'hotel' | 'hotelranking' | 'lov' | 'currency'
+
+interface GenerateSearchIdOptions {
+  anonymousId: anonymousId
+  language: string
+  currency: string
+  country: string
+}
 
 export const getIndexName = (index: IndexType): string => {
   const indexNames = {
@@ -31,4 +42,13 @@ export const getLocalizedAttributes = (
   })
 
   return output
+}
+
+export const generateSearchId = (
+  parameters: Record<string, unknown>,
+  options: GenerateSearchIdOptions
+): string => {
+  const {anonymousId, language, currency, country} = options
+
+  return hash({...parameters, anonymousId, language, currency, country})
 }
