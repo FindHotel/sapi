@@ -24,7 +24,7 @@ interface Options {
   hsoFilter: HsoFilter
 }
 
-type OptionalFiltes = string[]
+type OptionalFilters = string[]
 
 type FacetFilters = Array<string | string[]>
 
@@ -34,10 +34,10 @@ interface BuildOptionalFiltersParameters {
   sortField?: string
   checkIn?: string
   checkOut?: string
-  priceMin?: number
-  priceMax?: number
-  priceBucketWidth?: number
-  exchangeRate: number
+  filters?: {
+    priceMin?: number
+    priceMax?: number
+  }
 }
 
 interface AlgoliaGeoSearchRequest {
@@ -50,7 +50,7 @@ interface AlgoliaGeoSearchRequest {
   attributesToRetrieve: string[]
   attributesToHighlight: string[]
   getRankingInfo: boolean
-  optionalFilters: OptionalFiltes
+  optionalFilters: OptionalFilters
   insideBoundingBox?: BoundingBox[]
   insidePolygon?: Polygon
   aroundLatLng?: string
@@ -82,9 +82,9 @@ export interface GeoSearchResults {
 }
 
 const buildFacetFilters = (
-  parameters: FacetFiltersParameters
+  filters: FacetFiltersParameters
 ): Array<string | string[]> => {
-  const {facilities, starRating, propertyTypeId, themeIds} = parameters
+  const {facilities, starRating, propertyTypeId, themeIds} = filters
 
   const facetFilters = []
 
@@ -129,7 +129,7 @@ const buildNumericFilters = ({
   return []
 }
 
-const buildFilters = (noHostels?: boolean): string => {
+const buildFilters = ({noHostels}: {noHostels?: boolean} = {}): string => {
   let filters = 'isDeleted = 0'
 
   if (noHostels) {
@@ -140,18 +140,13 @@ const buildFilters = (noHostels?: boolean): string => {
 }
 
 const buildOptionalFilters = (
-  hsoFilter: HsoFilter,
-  parameters: BuildOptionalFiltersParameters
-): OptionalFiltes => {
-  const {
-    priceMin,
-    priceMax,
-    checkIn,
-    checkOut,
-    sortField,
-    priceBucketWidth,
-    exchangeRate
-  } = parameters
+  parameters: BuildOptionalFiltersParameters,
+  options: Options
+): OptionalFilters => {
+  const {filters = {}, checkIn, checkOut, sortField} = parameters
+  const {priceMin, priceMax} = filters
+  const {hsoFilter, priceBucketWidth, exchangeRate} = options
+
   let optionalFilters = [...hsoFilter]
 
   if (sortField === 'price') {
@@ -206,7 +201,7 @@ const getHotelAttributesToRetrieve = (languages: string[]): string[] => {
   ]
 }
 
-const getFacets = (): string[] => [
+const facets = [
   'facilities',
   'propertyTypeId',
   'starRating',
@@ -222,62 +217,19 @@ export const geoSearch = (
   options: Options
 ) => async (parameters: GeoSearchParameters): Promise<GeoSearchResults> => {
   const {
-    languages,
-    pageSize,
-    priceBucketWidth,
-    exchangeRate,
-    hsoFilter
-  } = options
-
-  const {
-    checkIn,
-    checkOut,
-    sortField,
-    offset = 0,
-    length = pageSize,
     boundingBox,
     polygon,
     geolocation,
+    length = options.pageSize,
+    offset = 0,
     filters = {}
   } = parameters
 
-  const {
-    facilities,
-    starRating,
-    guestRating,
-    propertyTypes,
-    themes,
-    priceMin,
-    priceMax,
-    noHostels
-  } = filters
-
-  const requestFilters = buildFilters(noHostels)
-
-  const facetFilters = buildFacetFilters({
-    facilities,
-    starRating,
-    propertyTypeId: propertyTypes,
-    themeIds: themes
-  })
-
-  const numericFilters = buildNumericFilters({
-    guestRating
-  })
-
-  const optionalFilters = buildOptionalFilters(hsoFilter, {
-    checkIn,
-    checkOut,
-    sortField,
-    priceMin,
-    priceMax,
-    priceBucketWidth,
-    exchangeRate
-  })
-
-  const attributesToRetrieve = getHotelAttributesToRetrieve(languages)
-
-  const facets = getFacets()
+  const requestFilters = buildFilters(filters)
+  const facetFilters = buildFacetFilters(filters)
+  const numericFilters = buildNumericFilters(filters)
+  const optionalFilters = buildOptionalFilters(parameters, options)
+  const attributesToRetrieve = getHotelAttributesToRetrieve(options.languages)
 
   const searchRequest: AlgoliaGeoSearchRequest = {
     length,

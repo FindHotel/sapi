@@ -27,7 +27,8 @@ const getNonBlockedDefaultCheckInDate = ({
   const todayUTC = dateToMiddayUTC(format(new Date(), DATE_FORMAT))
   let checkIn = lastDayOfISOWeek(addDays(todayUTC, daysFromNow))
 
-  const isDateBlocked = (date: string): boolean => blockedDefaultDates.has(date)
+  const isDateBlocked = (date: string): boolean =>
+    blockedDefaultDates.includes(date)
 
   while (isDateBlocked(format(checkIn, DATE_FORMAT))) {
     checkIn = addWeeks(checkIn, 1)
@@ -45,7 +46,7 @@ export const getCheckInCheckOutDates = (
 
   let checkInDate: Date
 
-  if (checkIn) {
+  if (checkIn !== undefined) {
     checkInDate = new Date(checkIn)
   } else if (dayDistance) {
     checkInDate = addDays(todayUTC, dayDistance)
@@ -53,9 +54,8 @@ export const getCheckInCheckOutDates = (
     checkInDate = getNonBlockedDefaultCheckInDate(datesConfig)
   }
 
-  const checkOutDate = checkOut
-    ? new Date(checkOut)
-    : addDays(checkInDate, nights)
+  const checkOutDate =
+    checkOut === undefined ? addDays(checkInDate, nights) : new Date(checkOut)
 
   return {
     checkIn: format(checkInDate, DATE_FORMAT),

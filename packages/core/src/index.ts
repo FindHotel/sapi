@@ -1,9 +1,7 @@
 import algoliasearch from 'algoliasearch'
 
 import {search, Search} from './search'
-
 import {raa, RaaClient} from './raa'
-
 import {getConfigs, Configs} from './configs'
 
 import {AnonymousId} from './types'

@@ -42,7 +42,7 @@ export interface ListOfValuesItem {
 
 export interface DatesConfig {
   daysFromNow: number
-  blockedDefaultDates: Set<string>
+  blockedDefaultDates: string[]
 }
 
 export type Configs = {
