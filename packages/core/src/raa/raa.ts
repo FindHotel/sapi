@@ -57,7 +57,7 @@ const CONNECTION_TIMEOUT = 500 // Ms
 const createRaaRequest = (
   parameters: GetRatesParameters,
   options: RaaOptions
-): string => {
+): string | undefined => {
   const query = {
     checkIn: parameters.checkIn,
     checkOut: parameters.checkOut,
@@ -80,7 +80,7 @@ const createRaaRequest = (
     facetsEnabled: options.facetsEnabled
   }
 
-  let queryString = ''
+  let queryString
 
   try {
     queryString = JSON.stringify(query)
