@@ -54,9 +54,7 @@ export type Configs = {
 
 export type GetConfig = () => Promise<Configs>
 
-const DAYS_FROM_NOW = 45
-const LOV_HITS_PER_PAGE = 1000 // Max page size
-const CLIENT_ID = 'findhotel-net'
+const CLIENT_ID = 'findhotel-net' // Should come from client configuration?
 
 /**
  * Add Jexl map to replace placeholders with values
@@ -154,7 +152,7 @@ export const getConfigs = (
     {
       indexName: getIndexName('lov'),
       params: {
-        hitsPerPage: LOV_HITS_PER_PAGE,
+        hitsPerPage: 1000,
         attributesToRetrieve: getLovAttributesToRetrieve(languages),
         attributesToHighlight: [],
         getRankingInfo: true
@@ -188,7 +186,7 @@ export const getConfigs = (
     lov,
     exchangeRatesUSD: exchangeRatesFromResponse(exchangeRates),
     dates: {
-      daysFromNow: config[0]?.daysFromNow ?? DAYS_FROM_NOW,
+      daysFromNow: config[0]?.daysFromNow ?? 45,
       blockedDefaultDates: config[0]?.blockedDefaultDates ?? []
     }
   }

@@ -89,19 +89,19 @@ const buildFacetFilters = (
   const facetFilters = []
 
   if (propertyTypeId?.length) {
-    const propertyTypeIdFilter = propertyTypeId?.map(
+    const propertyTypeIdFilter = propertyTypeId.map(
       (item) => `propertyTypeId:${item}`
     )
     facetFilters.push(propertyTypeIdFilter)
   }
 
   if (facilities?.length) {
-    const facilitiesFilter = facilities?.map((item) => `facilities:${item}`)
+    const facilitiesFilter = facilities.map((item) => `facilities:${item}`)
     facetFilters.push(...facilitiesFilter)
   }
 
   if (themeIds?.length) {
-    const themeIdsFilter = themeIds?.map((item) => `themeIds:${item}`)
+    const themeIdsFilter = themeIds.map((item) => `themeIds:${item}`)
     facetFilters.push(...themeIdsFilter)
   }
 

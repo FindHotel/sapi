@@ -93,7 +93,7 @@ const createRaaRequest = (
 
 export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
   if (typeof raaEndpoint === 'undefined') {
-    throw new TypeError('RAA endpoint must is not provided')
+    throw new TypeError('RAA endpoint must be provided')
   }
 
   if (
