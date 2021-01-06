@@ -1,11 +1,17 @@
 import hash from 'object-hash'
 
-import {anonymousId} from './types'
+import {AnonymousId} from './types'
 
-type IndexType = 'autocomplete' | 'hotel' | 'hotelranking' | 'lov' | 'currency'
+type IndexType =
+  | 'autocomplete'
+  | 'hotel'
+  | 'hotelranking'
+  | 'lov'
+  | 'currency'
+  | 'config'
 
 interface GenerateSearchIdOptions {
-  anonymousId: anonymousId
+  anonymousId: AnonymousId
   language: string
   currency: string
   country: string
@@ -17,7 +23,8 @@ export const getIndexName = (index: IndexType): string => {
     hotel: 'prod_hotel_v3',
     hotelranking: 'prod_hotelranking_v1_os000002_hso_availability',
     lov: 'prod_lov_v2',
-    currency: 'prod_curr_v1'
+    currency: 'prod_curr_v1',
+    config: 'prod_sapicfg_v1'
   }
 
   const indexName = indexNames[index]

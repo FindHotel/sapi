@@ -54,7 +54,9 @@ export type Configs = {
 
 export type GetConfig = () => Promise<Configs>
 
+const DAYS_FROM_NOW = 45
 const LOV_HITS_PER_PAGE = 1000 // Max page size
+const CLIENT_ID = 'findhotel-net'
 
 /**
  * Add Jexl map to replace placeholders with values
@@ -133,15 +135,6 @@ const getLovAttributesToRetrieve = (languages: string[]): string[] => {
   return ['id', 'categoryID', 'objectID', ...localizedAttributes]
 }
 
-const DAYS_FROM_NOW = 45
-
-const BLOCKED_DEFAULT_DATES = new Set([
-  '2021-01-03',
-  '2021-04-04',
-  '2021-02-14',
-  '2022-02-27'
-])
-
 export const getConfigs = (
   algoliaClient: AlgoliaClient,
   languages: string[],
@@ -177,19 +170,26 @@ export const getConfigs = (
         facetFilters: [currencyFacetFilters],
         getRankingInfo: false
       }
+    },
+    {
+      indexName: getIndexName('config'),
+      params: {
+        attributesToHighlight: [],
+        facetFilters: [[`objectID:${CLIENT_ID}`]]
+      }
     }
   ]
 
   const {results}: Response = await algoliaClient.search(requests)
-  const [hso, lov, exchangeRates] = results.map((result) => result.hits)
+  const [hso, lov, exchangeRates, config] = results.map((result) => result.hits)
 
   return {
     hso,
     lov,
     exchangeRatesUSD: exchangeRatesFromResponse(exchangeRates),
     dates: {
-      daysFromNow: DAYS_FROM_NOW,
-      blockedDefaultDates: BLOCKED_DEFAULT_DATES
+      daysFromNow: config[0]?.daysFromNow ?? DAYS_FROM_NOW,
+      blockedDefaultDates: config[0]?.blockedDefaultDates ?? []
     }
   }
 }
