@@ -3,33 +3,33 @@ import isWeekend from 'date-fns/isWeekend'
 
 import {dateToMiddayUTC} from './utils'
 
-const isNil = (value: any) => {
-  return value === null || value === undefined
+interface PriceFilterParameters {
+  checkIn?: string
+  checkOut?: string
+  margin?: number
+  priceBucketWidth: number
+  priceMax?: number
+  priceMin?: number
 }
 
-const STEP = 1
 const PRICE_SORT_WEIGHT = 100
 const PRICE_FILTER_WEIGHT = 10000
 const PRICE_BUCKETS_COUNT = 31
 
-export const generateSortByPriceFilters = (
-  step: number = STEP,
+export const generateSortByPriceFilter = (
   bucketsCount: number = PRICE_BUCKETS_COUNT
 ): string[] => {
   const filters = []
 
   for (let i = bucketsCount; i > 0; --i) {
-    const score = (bucketsCount + 1 - i) * step * PRICE_SORT_WEIGHT
-    filters.push(`pricing.minRateBkt:${i * step}<score=${score}>`)
+    const score = (bucketsCount + 1 - i) * PRICE_SORT_WEIGHT
+    filters.push(`pricing.minRateBkt:${i}<score=${score}>`)
   }
 
   return filters
 }
 
-export const getPriceBucketName = (
-  checkIn: string | null | undefined,
-  checkOut: string | null | undefined
-): string => {
+const getPriceBucketName = (checkIn?: string, checkOut?: string): string => {
   if (!checkIn || !checkOut) {
     return 'pricing.medianRateBkt'
   }
@@ -53,32 +53,19 @@ export const generatePriceFilter = ({
   priceMin,
   priceMax,
   priceBucketWidth,
-  exchangeRate,
   checkIn,
   checkOut,
   margin = 2
-}: {
-  checkIn: string | null | undefined
-  checkOut: string | null | undefined
-  exchangeRate: number | null | undefined
-  margin?: number
-  priceBucketWidth: number | null | undefined
-  priceMax: number | null | undefined
-  priceMin: number | null | undefined
-}): string[] => {
-  const priceFilter = []
+}: PriceFilterParameters): string[] => {
+  const priceFilter: string[] = []
 
-  if ((isNil(priceMin) && isNil(priceMax)) || isNil(exchangeRate)) {
+  if (priceMin === undefined && priceMax === undefined) {
     return priceFilter
   }
 
-  const bucketWidthInCurrency = priceBucketWidth * exchangeRate
-
-  let minBkt = priceMin
-    ? Math.floor(priceMin / bucketWidthInCurrency) - margin
-    : 0
+  let minBkt = priceMin ? Math.floor(priceMin / priceBucketWidth) - margin : 0
   let maxBkt = priceMax
-    ? Math.ceil(priceMax / bucketWidthInCurrency) + margin
+    ? Math.ceil(priceMax / priceBucketWidth) + margin
     : PRICE_BUCKETS_COUNT
 
   if (minBkt < 0) {

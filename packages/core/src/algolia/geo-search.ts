@@ -9,7 +9,7 @@ import {
   Polygon
 } from '../types'
 
-import {generateSortByPriceFilters, generatePriceFilter} from '../pricing'
+import {generateSortByPriceFilter, generatePriceFilter} from '../pricing'
 
 // TODO: move to const
 const HOSTEL_PROPERTY_TYPE_ID = '5'
@@ -60,6 +60,10 @@ interface AlgoliaGeoSearchRequest {
 
 interface NumericFiltersParameters {
   guestRating?: number[]
+}
+
+interface FiltersParameters {
+  noHostels?: boolean
 }
 
 interface FacetFiltersParameters {
@@ -129,7 +133,7 @@ const buildNumericFilters = ({
   return []
 }
 
-const buildFilters = ({noHostels}: {noHostels?: boolean} = {}): string => {
+const buildFilters = ({noHostels}: FiltersParameters): string => {
   let filters = 'isDeleted = 0'
 
   if (noHostels) {
@@ -150,7 +154,7 @@ const buildOptionalFilters = (
   let optionalFilters = [...hsoFilter]
 
   if (sortField === 'price') {
-    const sortByPriceFilters = generateSortByPriceFilters()
+    const sortByPriceFilters = generateSortByPriceFilter()
 
     optionalFilters = [...optionalFilters, ...sortByPriceFilters]
   }
@@ -159,10 +163,9 @@ const buildOptionalFilters = (
     const priceFilter = generatePriceFilter({
       priceMin,
       priceMax,
-      priceBucketWidth,
-      exchangeRate,
       checkIn,
-      checkOut
+      checkOut,
+      priceBucketWidth: priceBucketWidth * exchangeRate
     })
 
     optionalFilters = [...optionalFilters, ...priceFilter]
