@@ -41,7 +41,7 @@ export type OnRatesCb = (rates: RatesResponse) => void
 
 export type GetRates = (
   parameters: GetRatesParameters,
-  onRatesCb?: OnRatesCb
+  onRates?: OnRatesCb
 ) => Promise<RatesResponse>
 
 enum ReadyStates {
@@ -182,9 +182,9 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
    * Get rates
    *
    * @param parameters - raa request parameters
-   * @param onRatesCb - on rates reseived callback
+   * @param onRates - on rates reseived callback
    */
-  const getRates: GetRates = (parameters, onRatesCb) => {
+  const getRates: GetRates = (parameters, onRates) => {
     const result: RatesResponse = {}
 
     requests.current = createRaaRequest(parameters, options)
@@ -208,8 +208,8 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
               result.hotelsRates = response.results
             }
 
-            if (typeof onRatesCb === 'function') {
-              onRatesCb({...result})
+            if (typeof onRates === 'function') {
+              onRates({...result})
             }
           }
         }

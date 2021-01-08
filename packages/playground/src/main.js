@@ -89,18 +89,20 @@ const run = async () => {
 
   log('Search start')
 
-  const search = await client.search(
-    searchParameters,
-    (response) => {
+  const search = await client.search(searchParameters, {
+    onSearch: (response) => {
+      log('Search started', response)
+    },
+    onHotels: (response) => {
       log('Hotels fetched', response)
     },
-    (response) => {
+    onRates: (response) => {
       log('Rates reseived', response)
     },
-    (response) => {
+    onComplete: (response) => {
       log('Search completed', response)
     }
-  )
+  })
 
   log('Search done', search)
 

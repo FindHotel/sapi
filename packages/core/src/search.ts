@@ -41,8 +41,8 @@ type SearchParameters = ApiSearchParameters & {
   searchId: string
 }
 
+type OnSearchCb = (response: Record<string, unknown>) => void
 type OnHotelsCb = (response: Record<string, unknown>) => void
-
 type OnCompleteCb = (response: Record<string, unknown>) => void
 
 type HotelWithRates = Hotel & {
@@ -71,9 +71,12 @@ interface Options {
 
 export type Search = (
   parameters: ApiSearchParameters,
-  onHotelsCb?: OnHotelsCb,
-  onRatesCb?: OnRatesCb,
-  onCompleteCb?: OnCompleteCb
+  callbacks: {
+    onSearch?: OnSearchCb
+    onHotels?: OnHotelsCb
+    onRates?: OnRatesCb
+    onComplete?: OnCompleteCb
+  }
 ) => Promise<Record<string, unknown>>
 
 const DEFAULT_ROOMS = '2'
@@ -208,13 +211,29 @@ const prepareSearchParameters = (
 const generateDestinationString = (hits: Hotel[]): string =>
   hits.map((hit) => hit.objectID).join(',')
 
+const hotelsHaveStaticPosition = (parameters: SearchParameters): boolean => {
+  if (parameters.sortField === 'price') {
+    return false
+  }
+
+  if (
+    parameters.filters?.priceMin !== undefined ||
+    parameters.filters?.priceMax !== undefined
+  ) {
+    return false
+  }
+
+  return true
+}
+
 export const search = (base: Base): Search => {
   const {algoliaClient, raaClient, options, configs} = base
   const {hso, exchangeRatesUSD} = configs
   const {language, fallBackLanguages, pageSize, currency} = options
   const languages = [language, ...fallBackLanguages]
 
-  return async (parameters, onHotelsCb, onRatesCb, onCompleteCb) => {
+  return async (parameters, callbacks) => {
+    const {onSearch, onHotels, onRates, onComplete} = callbacks
     let loadMoreOffset = 0
 
     const searchParameters = prepareSearchParameters(
@@ -222,6 +241,16 @@ export const search = (base: Base): Search => {
       options,
       configs
     )
+
+    if (typeof onSearch === 'function') {
+      onSearch({
+        searchParameters,
+        meta: {
+          searchId: searchParameters.searchId,
+          hotelsHaveStaticPosition: hotelsHaveStaticPosition(searchParameters)
+        }
+      })
+    }
 
     const anchorObject = await getAnchor(
       algoliaClient,
@@ -251,8 +280,8 @@ export const search = (base: Base): Search => {
         results: getDataFromStaticResults(results, anchorHotel)
       }
 
-      if (typeof onHotelsCb === 'function') {
-        onHotelsCb(staticResults)
+      if (typeof onHotels === 'function') {
+        onHotels(staticResults)
       }
 
       let ratesResults
@@ -264,11 +293,11 @@ export const search = (base: Base): Search => {
           anchorDestination: anchorHotel?.objectID
         }
 
-        ratesResults = await raaClient.getRates(ratesParameters, onRatesCb)
+        ratesResults = await raaClient.getRates(ratesParameters, onRates)
       }
 
-      if (typeof onCompleteCb === 'function') {
-        onCompleteCb({
+      if (typeof onComplete === 'function') {
+        onComplete({
           ...staticResults,
           rates: ratesResults
         })
