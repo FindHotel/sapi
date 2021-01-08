@@ -1,8 +1,9 @@
 import {AlgoliaClient} from '..'
-import {getIndexName, getLocalizedAttributes} from './utils'
+import {getIndexName, getLocalizedAttributes, hitToHotel} from './utils'
 import {HsoFilter} from '../configs'
 import {
   OptionalSearchParameters,
+  Hotel,
   Hit,
   Location,
   BoundingBox,
@@ -82,7 +83,7 @@ export interface GeoSearchResults {
   length: number
   nbHits: number
   offset: number
-  hits: Hit[]
+  hits: Hotel[]
 }
 
 const buildFacetFilters = (
@@ -260,5 +261,14 @@ export const geoSearch = (
 
   const response = await algoliaClient.search(requests)
 
-  return response.results[0]
+  const results = response.results[0]
+
+  const hits = results.hits.map((hit: Hit) =>
+    hitToHotel(hit, options.languages)
+  )
+
+  return {
+    ...results,
+    hits
+  }
 }

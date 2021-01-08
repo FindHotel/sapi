@@ -1,6 +1,19 @@
 import hash from 'object-hash'
 
-import {AnonymousId} from './types'
+import {
+  AnonymousId,
+  HotelAnchorHit,
+  PlaceAnchorHit,
+  HotelAnchor,
+  PlaceAnchor,
+  Hit,
+  Hotel,
+  LocalizedString,
+  LocalizedArray,
+  Language
+} from '../types'
+
+type LocalizedAttribute = LocalizedString | LocalizedArray
 
 type IndexType =
   | 'autocomplete'
@@ -35,7 +48,7 @@ export const getIndexName = (index: IndexType): string => {
 }
 
 export const getLocalizedAttributes = (
-  languages: string[],
+  languages: Language[],
   attributes: string[]
 ): string[] => {
   const output: string[] = []
@@ -59,3 +72,104 @@ export const generateSearchId = (
 
   return hash({...parameters, anonymousId, language, currency, country})
 }
+
+const toLocalizedString = (attr: LocalizedString, languages: Language[]) => {
+  for (const lang of languages) {
+    if (attr[lang] && attr[lang].trim() !== '') return attr[lang]
+  }
+
+  return ''
+}
+
+const arrayToLocalizedString = (
+  attr: LocalizedArray,
+  languages: Language[],
+  separator: string | undefined = ', ' // Can be overwritten based on localisation logic
+): string => {
+  const out: LocalizedString = {}
+
+  languages.forEach((lang) => {
+    const current = attr[lang] || []
+
+    out[lang] = current
+      .map((item, index) => {
+        if (item && item.trim() !== '') {
+          return item
+        }
+
+        const fallbackLang = languages.find(
+          (lang) => attr?.[lang]?.[index] && attr[lang][index].trim() !== ''
+        )
+
+        return fallbackLang ? attr[fallbackLang][index] : ''
+      })
+      .join(`${separator}`)
+  })
+
+  return toLocalizedString(out, languages)
+}
+
+const attributeWithFallback = (
+  attr: LocalizedAttribute,
+  language: string,
+  languages: string[]
+): string[] => {
+  let result = attr[language]
+
+  if (!result) {
+    const index = languages.indexOf(language)
+    // Slice here to start from the right position in languages array
+    const fallbackLang =
+      languages.slice(index).find((language) => attr[language]) || 'en'
+    result = attr[fallbackLang]
+  }
+
+  return typeof result === 'string' ? [result] : result
+}
+
+const mergeToLocalizedString = (
+  a: LocalizedAttribute,
+  b: LocalizedAttribute,
+  languages: Language[]
+): string => {
+  const output: LocalizedArray = {}
+
+  for (const language of languages) {
+    output[language] = [
+      ...attributeWithFallback(a, language, languages),
+      ...attributeWithFallback(b, language, languages)
+    ]
+  }
+
+  return arrayToLocalizedString(output, languages)
+}
+
+export const hitToHotel = (hit: Hit, languages: Language[]): Hotel => {
+  return {
+    ...hit,
+    displayAddress: mergeToLocalizedString(
+      hit.address,
+      hit.placeADName,
+      languages
+    ),
+    placeDisplayName: arrayToLocalizedString(hit.placeDN, languages),
+    hotelName: toLocalizedString(hit.hotelName, languages)
+  }
+}
+
+export const hitToHotelTypeAnchor = (
+  anchorHit: HotelAnchorHit,
+  languages: Language[]
+): HotelAnchor => ({
+  ...anchorHit,
+  hotelName: toLocalizedString(anchorHit.hotelName, languages),
+  placeDisplayName: arrayToLocalizedString(anchorHit.placeDN, languages)
+})
+
+export const hitToPlaceTypeAnchor = (
+  anchorHit: PlaceAnchorHit,
+  languages: Language[]
+): PlaceAnchor => ({
+  ...anchorHit,
+  placeDisplayName: arrayToLocalizedString(anchorHit.placeDN, languages)
+})

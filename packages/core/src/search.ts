@@ -24,7 +24,14 @@ import {
   AnchorType
 } from './algolia'
 
-import {Anchor, ApiSearchParameters, Hit, Rate, AnonymousId} from './types'
+import {
+  Anchor,
+  PlaceAnchor,
+  ApiSearchParameters,
+  Hotel,
+  Rate,
+  AnonymousId
+} from './types'
 
 type SearchParameters = ApiSearchParameters & {
   checkIn: string
@@ -38,12 +45,12 @@ type OnHotelsCb = (response: Record<string, unknown>) => void
 
 type OnCompleteCb = (response: Record<string, unknown>) => void
 
-type HitWithRates = Hit & {
+type HotelWithRates = Hotel & {
   rates?: Rate
 }
 
 type StaticResultsData = GeoSearchResults & {
-  anchorHotel?: Hit
+  anchorHotel?: Hotel
 }
 
 type StaticResults = {
@@ -72,7 +79,7 @@ export type Search = (
 const DEFAULT_ROOMS = '2'
 const DEFAULT_DEVICE_CATEGORY = 'desktop'
 
-const augmentHitWithRates = (hit: Hit, rates?: Rate[]): HitWithRates => {
+const augmentHitWithRates = (hit: Hotel, rates?: Rate[]): HotelWithRates => {
   const hitRates = rates?.find((rate) => rate.id === hit.objectID)
 
   return {
@@ -83,7 +90,7 @@ const augmentHitWithRates = (hit: Hit, rates?: Rate[]): HitWithRates => {
 
 const getDataFromStaticResults = (
   staticResults: GeoSearchResults,
-  anchorHotel: Hit
+  anchorHotel?: Hotel
 ): StaticResultsData => {
   const {facets, hits, length, nbHits, offset} = staticResults
 
@@ -156,10 +163,12 @@ const prepareGeoSearchParameters = (
     return parameters
   }
 
-  if (anchor.polygon?.length) {
+  const {polygon} = anchor as PlaceAnchor
+
+  if (polygon?.length) {
     return {
       ...parameters,
-      polygon: anchor.polygon
+      polygon
     }
   }
 
@@ -196,7 +205,7 @@ const prepareSearchParameters = (
   }
 }
 
-const generateDestinationString = (hits: Hit[]): string =>
+const generateDestinationString = (hits: Hotel[]): string =>
   hits.map((hit) => hit.objectID).join(',')
 
 export const search = (base: Base): Search => {
@@ -315,7 +324,7 @@ export const search = (base: Base): Search => {
             ...searchResults.results.anchorHotel,
             rates: searchResults.rates?.anchorHotelRate
           },
-          hits: searchResults.results.hits.map((hit: Hit) =>
+          hits: searchResults.results.hits.map((hit: Hotel) =>
             augmentHitWithRates(hit, searchResults.rates?.hotelsRates)
           )
         }

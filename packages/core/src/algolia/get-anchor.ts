@@ -1,6 +1,12 @@
 import {AlgoliaClient} from '..'
-import {getIndexName, getLocalizedAttributes} from './utils'
-import {Anchor, Hit, Location} from '../types'
+import {
+  getIndexName,
+  getLocalizedAttributes,
+  hitToHotel,
+  hitToHotelTypeAnchor,
+  hitToPlaceTypeAnchor
+} from './utils'
+import {Anchor, Hotel, Location} from '../types'
 
 interface GetAnchorParameters {
   hotelId?: string
@@ -20,7 +26,7 @@ export enum AnchorType {
 export type AnchorObject = {
   anchorType: AnchorType
   anchor: Anchor
-  anchorHotel: Hit
+  anchorHotel: Hotel | undefined
 }
 
 const autocompleteAttributesToRetrieve = (languages: string[]): string[] => {
@@ -88,6 +94,7 @@ export const getAnchor = (
 ) => async (parameters: GetAnchorParameters): Promise<AnchorObject> => {
   const anchorType = getAnchorType(parameters)
   const {hotelId, placeId} = parameters
+  let hitToAnchor
   const requests = []
 
   switch (anchorType) {
@@ -113,6 +120,8 @@ export const getAnchor = (
         )
       }
 
+      hitToAnchor = hitToHotelTypeAnchor
+
       break
     }
 
@@ -129,16 +138,23 @@ export const getAnchor = (
         })
       }
 
+      hitToAnchor = hitToPlaceTypeAnchor
+
       break
     }
   }
 
   const response = await algoliaClient.search(requests)
   const [anchorResponse, anchorHotelResponse] = response.results || []
+  const anchor = hitToAnchor(anchorResponse?.hits[0], languages)
+  const anchorHotel =
+    anchorHotelResponse?.hits[0] === undefined
+      ? undefined
+      : hitToHotel(anchorHotelResponse?.hits[0], languages)
 
   return {
     anchorType,
-    anchor: anchorResponse?.hits[0],
-    anchorHotel: anchorHotelResponse?.hits[0]
+    anchor,
+    anchorHotel
   }
 }

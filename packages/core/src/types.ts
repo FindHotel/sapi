@@ -104,39 +104,49 @@ type PricingBreakdown =
 
 type Pricing = Record<PricingBreakdown, number>
 
-type Language = string
+export type Language = string
 
-type TranslatedString = Record<Language, string>
+export type LocalizedString = Record<Language, string>
 
-type TranslatedArray = Record<Language, string[]>
+export type LocalizedArray = Record<Language, string[]>
 
-export interface Anchor {
+interface BasicAnchorHit {
   objectID: string
-  objectType: 'hotel' | 'place'
-  placeADN: TranslatedArray
-  placeCategory: number
-  placeDN: TranslatedArray
-  placeName: TranslatedArray
-  placeType: number
-  polygon?: Polygon
+  placeADN: LocalizedArray
+  placeDN: LocalizedArray
   priceBucketWidth: number
   _geoloc: Location
 }
 
+export interface HotelAnchorHit extends BasicAnchorHit {
+  hotelName: LocalizedString
+  objectType: 'hotel'
+}
+
+export interface PlaceAnchorHit extends BasicAnchorHit {
+  objectType: 'place'
+  polygon?: Polygon
+  placeCategory: number
+  placeName: LocalizedArray
+  placeType: number
+}
+
+export type AnchorHit = HotelAnchorHit | PlaceAnchorHit
+
 export interface Hit {
-  address: TranslatedString
+  address: LocalizedString
   checkInTime: string
   checkOutTime: string
   facilities: number[]
   guestRating: GuestRating
   guestType: GuestType
-  hotelName: TranslatedString
+  hotelName: LocalizedString
   imageURIs: string[]
   isDeleted: boolean
   lastBooked: number
   objectID: string
-  placeADName: TranslatedArray
-  placeDN: TranslatedArray
+  placeADName: LocalizedArray
+  placeDN: LocalizedArray
   pricing: Pricing
   propertyTypeId: number
   reviewCount: number
@@ -146,6 +156,26 @@ export interface Hit {
   themeIds: number[]
   _geoloc: Partial<Location>
 }
+
+/**
+ * Product
+ */
+export interface Hotel extends Omit<Hit, 'hotelName'> {
+  displayAddress: string
+  hotelName: string
+  placeDisplayName: string
+}
+
+export interface HotelAnchor extends Omit<HotelAnchorHit, 'hotelName'> {
+  placeDisplayName: string
+  hotelName: string
+}
+
+export interface PlaceAnchor extends PlaceAnchorHit {
+  placeDisplayName: string
+}
+
+export type Anchor = HotelAnchor | PlaceAnchor
 
 /**
  * RAA types

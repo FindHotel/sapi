@@ -16,13 +16,11 @@ const PRICE_SORT_WEIGHT = 100
 const PRICE_FILTER_WEIGHT = 10000
 const PRICE_BUCKETS_COUNT = 31
 
-export const generateSortByPriceFilter = (
-  bucketsCount: number = PRICE_BUCKETS_COUNT
-): string[] => {
+export const generateSortByPriceFilter = (): string[] => {
   const filters = []
 
-  for (let i = bucketsCount; i > 0; --i) {
-    const score = (bucketsCount + 1 - i) * PRICE_SORT_WEIGHT
+  for (let i = PRICE_BUCKETS_COUNT; i > 0; --i) {
+    const score = (PRICE_BUCKETS_COUNT + 1 - i) * PRICE_SORT_WEIGHT
     filters.push(`pricing.minRateBkt:${i}<score=${score}>`)
   }
 
