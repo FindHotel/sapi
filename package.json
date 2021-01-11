@@ -23,8 +23,7 @@
     "typescript:watch": "tsc --watch",
     "install:all": "cd packages/core && npm install && cd ../playground && npm install && cd ../../ && npm install",
     "playground": "cd packages/playground && npm run dev",
-    "type-coverage": "type-coverage",
-    "ts-coverage": "typescript-coverage-report"
+    "ts-coverage": "typescript-coverage-report -t 99 -s --ignore-files 'dist/**/*.ts'"
   },
   "repository": {
     "type": "git",
