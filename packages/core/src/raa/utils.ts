@@ -19,18 +19,14 @@ interface Options {
 const isOfferInPriceRange = (
   offer: Offer,
   upperBound: number,
-  priceMin?: number,
-  priceMax?: number
+  priceMin: number,
+  priceMax: number
 ): boolean => {
-  if (priceMin !== undefined && offer.nightlyRate < priceMin) {
+  if (offer.nightlyRate < priceMin) {
     return false
   }
 
-  if (
-    priceMax !== undefined &&
-    priceMax < upperBound &&
-    offer.nightlyRate > priceMax
-  ) {
+  if (priceMax < upperBound && offer.nightlyRate > priceMax) {
     return false
   }
 
@@ -42,30 +38,32 @@ const applyPriceFilter = (
   options: Options,
   rate: Rate
 ): Rate => {
-  const {filters} = parameters
+  const {filters = {}} = parameters
+  const {priceMin, priceMax} = filters
   const {priceBucketCount, priceBucketWidth, exchangeRate} = options
-
   const upperBound =
     priceBucketCount * Math.round(priceBucketWidth * exchangeRate)
 
-  const hasOfferInPriceRange = rate.offers?.some((offer) =>
-    isOfferInPriceRange(offer, upperBound, filters?.priceMin, filters?.priceMax)
-  )
+  if (priceMin !== undefined && priceMax !== undefined) {
+    const hasOfferInPriceRange = rate.offers?.some((offer) =>
+      isOfferInPriceRange(offer, upperBound, priceMin, priceMax)
+    )
 
-  if (hasOfferInPriceRange) {
-    return rate
+    if (!hasOfferInPriceRange) {
+      const keysToOmit = [
+        'topOfferData',
+        'cheapestPriceRateBreakdown',
+        'anchorPriceRateBreakdown'
+      ]
+
+      return {
+        ...omit(keysToOmit, rate),
+        offers: []
+      }
+    }
   }
 
-  const keysToOmit = [
-    'topOfferData',
-    'cheapestPriceRateBreakdown',
-    'anchorPriceRateBreakdown'
-  ]
-
-  return {
-    ...omit(keysToOmit, rate),
-    offers: []
-  }
+  return rate
 }
 
 export const augmentRAAResponse = (
