@@ -22,7 +22,9 @@
     "typescript": "tsc",
     "typescript:watch": "tsc --watch",
     "install:all": "cd packages/core && npm install && cd ../playground && npm install && cd ../../ && npm install",
-    "playground": "cd packages/playground && npm run dev"
+    "playground": "cd packages/playground && npm run dev",
+    "type-coverage": "type-coverage",
+    "ts-coverage": "typescript-coverage-report"
   },
   "repository": {
     "type": "git",
@@ -48,8 +50,10 @@
     "rollup-plugin-terser": "^7.0.2",
     "ts-jest": "^26.4.4",
     "tslib": "^2.0.3",
+    "type-coverage": "^2.14.8",
     "typedoc": "^0.19.2",
     "typescript": "^4.1.2",
+    "typescript-coverage-report": "^0.4.0",
     "xo": "^0.35.0"
   },
   "dependencies": {}
