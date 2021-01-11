@@ -39,7 +39,7 @@ const run = async () => {
     anonymousId: 'fd9dbb5f-b337-4dd7-b640-1f177d1d3caa',
     language: 'pt-BR',
     fallBackLanguages: ['pt', 'en'],
-    currency: 'UAH',
+    currency: 'USD',
     country: 'NL',
     includeLocalTaxes: true,
     includeTaxes: true,

@@ -20,3 +20,11 @@ export const generateSearchId = (
 
   return hash({...parameters, anonymousId, language, currency, country})
 }
+
+export const omit = (keys: string[], object: any) => {
+  // eslint-disable-next-line unicorn/no-reduce
+  return keys.reduce((acc, key) => {
+    const {[key]: omit, ...rest} = acc
+    return rest
+  }, object)
+}

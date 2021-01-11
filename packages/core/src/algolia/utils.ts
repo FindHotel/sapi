@@ -47,6 +47,15 @@ export const getIndexName = (index: IndexType): string => {
   return indexName
 }
 
+export const generateSearchId = (
+  parameters: Record<string, unknown>,
+  options: GenerateSearchIdOptions
+): string => {
+  const {anonymousId, language, currency, country} = options
+
+  return hash({...parameters, anonymousId, language, currency, country})
+}
+
 export const getLocalizedAttributes = (
   languages: Language[],
   attributes: string[]
@@ -62,15 +71,6 @@ export const getLocalizedAttributes = (
   })
 
   return output
-}
-
-export const generateSearchId = (
-  parameters: Record<string, unknown>,
-  options: GenerateSearchIdOptions
-): string => {
-  const {anonymousId, language, currency, country} = options
-
-  return hash({...parameters, anonymousId, language, currency, country})
 }
 
 const toLocalizedString = (attr: LocalizedString, languages: Language[]) => {

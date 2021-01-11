@@ -48,7 +48,7 @@ export interface DatesConfig {
 export type Configs = {
   hso: HsoConfig[]
   lov: ListOfValuesItem[]
-  exchangeRatesUSD: ExchangeRates
+  exchangeRates: ExchangeRates
   dates: DatesConfig
 }
 
@@ -184,7 +184,7 @@ export const getConfigs = (
   return {
     hso,
     lov,
-    exchangeRatesUSD: exchangeRatesFromResponse(exchangeRates),
+    exchangeRates: exchangeRatesFromResponse(exchangeRates),
     dates: {
       daysFromNow: config[0]?.daysFromNow ?? 45,
       blockedDefaultDates: config[0]?.blockedDefaultDates ?? []

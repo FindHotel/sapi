@@ -3,7 +3,13 @@ import format from 'date-fns/format'
 
 import {Base} from '.'
 
-import {OnRatesCb, GetRatesParameters, RatesResponse} from './raa'
+import {
+  OnRatesCb,
+  GetRatesParameters,
+  RatesResponse,
+  augmentRAAResponse
+} from './raa'
+
 import {
   Configs,
   filterFromHsoConfig,
@@ -21,7 +27,8 @@ import {
   GeoSearchParameters,
   GeoSearchResults,
   AnchorObject,
-  AnchorType
+  AnchorType,
+  PRICE_BUCKETS_COUNT
 } from './algolia'
 
 import {
@@ -30,16 +37,9 @@ import {
   ApiSearchParameters,
   Hotel,
   Rate,
-  AnonymousId
+  AnonymousId,
+  SearchParameters
 } from './types'
-
-type SearchParameters = ApiSearchParameters & {
-  checkIn: string
-  checkOut: string
-  rooms: string
-  deviceCategory: string
-  searchId: string
-}
 
 type OnSearchCb = (response: Record<string, unknown>) => void
 type OnHotelsCb = (response: Record<string, unknown>) => void
@@ -91,6 +91,7 @@ const augmentHitWithRates = (hit: Hotel, rates?: Rate[]): HotelWithRates => {
   }
 }
 
+// TODO: Remove it =)
 const getDataFromStaticResults = (
   staticResults: GeoSearchResults,
   anchorHotel?: Hotel
@@ -160,29 +161,35 @@ const getHsoFilter = (
 
 const prepareGeoSearchParameters = (
   anchor: Anchor,
-  parameters: SearchParameters
+  parameters: SearchParameters,
+  anchorHotelId?: string
 ): GeoSearchParameters => {
-  if (parameters.boundingBox?.length) {
-    return parameters
+  const geoSearchParameters = {
+    ...parameters,
+    anchorHotelId
+  }
+
+  if (geoSearchParameters.boundingBox?.length) {
+    return geoSearchParameters
   }
 
   const {polygon} = anchor as PlaceAnchor
 
   if (polygon?.length) {
     return {
-      ...parameters,
+      ...geoSearchParameters,
       polygon
     }
   }
 
   if (anchor._geoloc) {
     return {
-      ...parameters,
+      ...geoSearchParameters,
       geolocation: anchor._geoloc
     }
   }
 
-  return parameters
+  return geoSearchParameters
 }
 
 const prepareSearchParameters = (
@@ -228,9 +235,10 @@ const hotelsHaveStaticPosition = (parameters: SearchParameters): boolean => {
 
 export const search = (base: Base): Search => {
   const {algoliaClient, raaClient, options, configs} = base
-  const {hso, exchangeRatesUSD} = configs
+  const {hso, exchangeRates} = configs
   const {language, fallBackLanguages, pageSize, currency} = options
   const languages = [language, ...fallBackLanguages]
+  const exchangeRate = exchangeRates[currency]
 
   return async (parameters, callbacks) => {
     const {onSearch, onHotels, onRates, onComplete} = callbacks
@@ -262,15 +270,19 @@ export const search = (base: Base): Search => {
       languages,
       pageSize,
       hsoFilter: getHsoFilter(hso, searchParameters, anchorObject),
-      exchangeRate: exchangeRatesUSD[currency],
+      exchangeRate,
       priceBucketWidth: anchor.priceBucketWidth
     })
 
     const runSearch = async (offset = 0): Promise<ResultsWithRates> => {
-      const geoSearchParameters = prepareGeoSearchParameters(anchor, {
-        ...searchParameters,
-        offset
-      })
+      const geoSearchParameters = prepareGeoSearchParameters(
+        anchor,
+        {
+          ...searchParameters,
+          offset
+        },
+        anchorHotel?.objectID
+      )
 
       const results = await geoSearchFn(geoSearchParameters)
 
@@ -291,6 +303,7 @@ export const search = (base: Base): Search => {
 
       let ratesResults
 
+      /** Request rates */
       if (searchParameters.rates) {
         const ratesParameters = {
           ...searchParameters,
@@ -298,7 +311,28 @@ export const search = (base: Base): Search => {
           anchorDestination: anchorHotel?.objectID
         }
 
-        ratesResults = await raaClient.getRates(ratesParameters, onRates)
+        const {priceBucketWidth} = anchor
+
+        ratesResults = await raaClient.getRates(
+          ratesParameters,
+          (response: RatesResponse) => {
+            if (typeof onRates === 'function') {
+              onRates(
+                augmentRAAResponse(response, ratesParameters, {
+                  exchangeRate,
+                  priceBucketWidth,
+                  priceBucketCount: PRICE_BUCKETS_COUNT
+                })
+              )
+            }
+          }
+        )
+
+        ratesResults = augmentRAAResponse(ratesResults, ratesParameters, {
+          exchangeRate,
+          priceBucketWidth,
+          priceBucketCount: PRICE_BUCKETS_COUNT
+        })
       }
 
       if (typeof onComplete === 'function') {

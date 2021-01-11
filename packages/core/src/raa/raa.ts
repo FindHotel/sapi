@@ -39,7 +39,7 @@ export interface RatesResponse {
 
 export type OnRatesCb = (rates: RatesResponse) => void
 
-export type GetRates = (
+type GetRates = (
   parameters: GetRatesParameters,
   onRates?: OnRatesCb
 ) => Promise<RatesResponse>

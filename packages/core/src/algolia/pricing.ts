@@ -1,7 +1,7 @@
 import differenceInDays from 'date-fns/differenceInDays'
 import isWeekend from 'date-fns/isWeekend'
 
-import {dateToMiddayUTC} from './utils'
+import {dateToMiddayUTC} from '../utils'
 
 interface PriceFilterParameters {
   checkIn?: string
@@ -14,7 +14,7 @@ interface PriceFilterParameters {
 
 const PRICE_SORT_WEIGHT = 100
 const PRICE_FILTER_WEIGHT = 10000
-const PRICE_BUCKETS_COUNT = 31
+export const PRICE_BUCKETS_COUNT = 31
 
 export const generateSortByPriceFilter = (): string[] => {
   const filters = []

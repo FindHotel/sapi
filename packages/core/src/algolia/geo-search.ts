@@ -10,7 +10,7 @@ import {
   Polygon
 } from '../types'
 
-import {generateSortByPriceFilter, generatePriceFilter} from '../pricing'
+import {generateSortByPriceFilter, generatePriceFilter} from './pricing'
 
 // TODO: move to const
 const HOSTEL_PROPERTY_TYPE_ID = '5'
@@ -76,6 +76,7 @@ interface FacetFiltersParameters {
 
 export interface GeoSearchParameters extends OptionalSearchParameters {
   geolocation?: Location
+  anchorHotelId?: string
 }
 
 export interface GeoSearchResults {
@@ -87,7 +88,8 @@ export interface GeoSearchResults {
 }
 
 const buildFacetFilters = (
-  filters: FacetFiltersParameters
+  filters: FacetFiltersParameters,
+  anchorHotelId?: string
 ): Array<string | string[]> => {
   const {facilities, starRating, propertyTypeId, themeIds} = filters
 
@@ -119,6 +121,10 @@ const buildFacetFilters = (
     })
 
     facetFilters.push(starRatingFilter)
+  }
+
+  if (anchorHotelId) {
+    facetFilters.push(`objectID:-${anchorHotelId}`)
   }
 
   return facetFilters
@@ -226,7 +232,8 @@ export const geoSearch = (
     geolocation,
     length = options.pageSize,
     offset = 0,
-    filters = {}
+    filters = {},
+    anchorHotelId
   } = parameters
 
   const searchRequest: AlgoliaGeoSearchRequest = {
@@ -237,7 +244,7 @@ export const geoSearch = (
     getRankingInfo: false,
     filters: buildFilters(filters),
     numericFilters: buildNumericFilters(filters),
-    facetFilters: buildFacetFilters(filters),
+    facetFilters: buildFacetFilters(filters, anchorHotelId),
     attributesToRetrieve: getHotelAttributesToRetrieve(options.languages),
     optionalFilters: buildOptionalFilters(parameters, options)
   }

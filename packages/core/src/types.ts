@@ -64,6 +64,14 @@ export type ApiSearchParameters =
   | LocationSearchParameters
   | QuerySearchParameters
 
+export type SearchParameters = ApiSearchParameters & {
+  checkIn: string
+  checkOut: string
+  rooms: string
+  deviceCategory: string
+  searchId: string
+}
+
 /**
  * Algolia types
  */
@@ -201,16 +209,17 @@ export interface Offer {
   id: string
   providerCode: string
   rateBreakdown: RateBreakdown
+  nightlyRate: number
 }
 
 export interface Rate {
-  anchorPriceRateBreakdown: AnchorPriceRateBreakdown
-  cheapestPriceRateBreakdown: RateBreakdown
+  anchorPriceRateBreakdown?: AnchorPriceRateBreakdown
+  cheapestPriceRateBreakdown?: RateBreakdown
   fetchedAllOffers: boolean
   hasMoreOffers: boolean
   id: string
   offers: Offer[]
-  topOfferData: TopOfferData
+  topOfferData?: TopOfferData
 }
 
 export interface RaaResponse {
