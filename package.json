@@ -10,11 +10,11 @@
   "types": "dist/types/packages/core/src",
   "scripts": {
     "clean:dist": "rm -rf dist",
-    "build": "rollup -c && tsc --outDir dist/lib --declarationDir dist/types --declaration true --emitDeclarationOnly",
+    "build": "tsc --outDir dist/lib --declarationDir dist/types --declaration true --emitDeclarationOnly && rollup -c",
     "lerna": "lerna",
     "lerna:bootstrap": "lerna bootstrap",
     "test": "ts-jest packages/*",
-    "__prepare": "npm run build",
+    "prepare": "npm run build",
     "rollup": "rollup -c",
     "rollup:watch": "npm run clean:dist && rollup -c --watch",
     "typedoc": "lerna run typedoc",
