@@ -260,7 +260,6 @@ export const geoSearch = (
   ]
 
   const response = await algoliaClient.search(requests)
-
   const results = response.results[0]
 
   const hits = results.hits.map((hit: Hit) =>

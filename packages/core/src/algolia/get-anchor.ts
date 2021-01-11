@@ -146,6 +146,7 @@ export const getAnchor = (
 
   const response = await algoliaClient.search(requests)
   const [anchorResponse, anchorHotelResponse] = response.results || []
+
   const anchor = hitToAnchor(anchorResponse?.hits[0], languages)
   const anchorHotel =
     anchorHotelResponse?.hits[0] === undefined

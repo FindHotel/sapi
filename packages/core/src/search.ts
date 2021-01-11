@@ -246,8 +246,7 @@ export const search = (base: Base): Search => {
       onSearch({
         searchParameters,
         meta: {
-          searchId: searchParameters.searchId,
-          hotelsHaveStaticPosition: hotelsHaveStaticPosition(searchParameters)
+          searchId: searchParameters.searchId
         }
       })
     }
@@ -281,7 +280,13 @@ export const search = (base: Base): Search => {
       }
 
       if (typeof onHotels === 'function') {
-        onHotels(staticResults)
+        onHotels({
+          ...staticResults,
+          meta: {
+            searchId: searchParameters.searchId,
+            hotelsHaveStaticPosition: hotelsHaveStaticPosition(searchParameters)
+          }
+        })
       }
 
       let ratesResults
