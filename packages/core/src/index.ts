@@ -38,6 +38,8 @@ export interface SapiClientOptions {
   skipBackendAugmentation?: boolean
   /** Enable raa faceting */
   facetsEnabled?: boolean
+  /** Used to identify SAPI Cli interface on the RAA backend */
+  sapiCliKey?: string
 }
 
 export type Base = {

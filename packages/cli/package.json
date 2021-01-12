@@ -1,0 +1,12 @@
+{
+  "name": "sapi-cli-client",
+  "version": "0.0.1",
+  "description": "SAPI Cli client",
+  "devDependencies": {},
+  "dependencies": {
+    "@findhotel/sapi": "file:../../",
+    "node-http-xhr": "^1.3.4",
+    "ws": "^7.4.2"
+  },
+  "scripts": {}
+}

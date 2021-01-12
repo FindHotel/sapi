@@ -9,12 +9,14 @@
     "serve": "^11.0.2"
   },
   "dependencies": {
-    "@findhotel/sapi": "file:../../"
+    "@findhotel/sapi": "file:../../",
+    "cd": "^0.3.3",
+    "sapi-cli-client": "file:../cli"
   },
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "dev": "npm-run-all --parallel start watch",
-    "start": "serve public"
+    "dev": "npm-run-all --parallel start  watch",
+    "start": "serve -l 3000 public"
   }
 }

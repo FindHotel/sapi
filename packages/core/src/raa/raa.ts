@@ -16,6 +16,7 @@ interface RaaOptions {
   skipBackendAugmentation?: boolean
   facetsEnabled?: boolean
   WebSocket?: any
+  sapiCliKey?: string
 }
 
 export interface GetRatesParameters {
@@ -77,7 +78,8 @@ const createRaaRequest = (
     includeLocalTaxes: options.includeLocalTaxes,
     includeTaxes: options.includeTaxes,
     skipBackendAugmentation: options.skipBackendAugmentation,
-    facetsEnabled: options.facetsEnabled
+    facetsEnabled: options.facetsEnabled,
+    sapiCliKey: options.sapiCliKey
   }
 
   let queryString
