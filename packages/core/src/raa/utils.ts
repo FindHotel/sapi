@@ -4,6 +4,8 @@ import {omit} from '../utils'
 import {Rate, Offer} from '../types'
 
 interface Parameters {
+  sortField?: string
+  sortOrder?: string
   filters?: {
     priceMin?: number
     priceMax?: number
@@ -14,6 +16,11 @@ interface Options {
   priceBucketWidth: number
   exchangeRate: number
   priceBucketCount: number
+}
+
+interface SortBy {
+  sortField: string
+  sortOrder?: string
 }
 
 const isOfferInPriceRange = (
@@ -37,7 +44,7 @@ const applyPriceFilter = (
   parameters: Parameters,
   options: Options,
   rate: Rate
-): Rate => {
+) => {
   const {filters = {}} = parameters
   const {priceMin, priceMax} = filters
   const {priceBucketCount, priceBucketWidth, exchangeRate} = options
@@ -50,20 +57,38 @@ const applyPriceFilter = (
     )
 
     if (!hasOfferInPriceRange) {
-      const keysToOmit = [
-        'topOfferData',
-        'cheapestPriceRateBreakdown',
-        'anchorPriceRateBreakdown'
-      ]
-
       return {
-        ...omit(keysToOmit, rate),
+        ...rate,
         offers: []
       }
     }
   }
 
   return rate
+}
+
+export const cheapestDisplayedRate = (rate: Rate) => {
+  if (rate.offers.length === 0) return 0
+
+  return Math.min(...rate.offers.map((offer) => offer.nightlyRate))
+}
+
+const sortByPrice = (rates: Rate[], sortOrder: string) => {
+  return rates.sort((a, b) => {
+    const sorter = cheapestDisplayedRate(a) - cheapestDisplayedRate(b)
+
+    return sortOrder === 'ascending' ? sorter : -sorter
+  })
+}
+
+const applySort = (rates: Rate[], sortBy: SortBy) => {
+  const {sortField, sortOrder = 'ascending'} = sortBy
+
+  if (sortField === 'price') {
+    return sortByPrice(rates, sortOrder)
+  }
+
+  return rates
 }
 
 export const augmentRAAResponse = (
@@ -74,11 +99,20 @@ export const augmentRAAResponse = (
   const {hotelsRates, anchorHotelRate} = ratesResults
   const keysToOmit = ['errors'] // Idially this should not come from RAA
 
-  const augmentedHotelsRates = hotelsRates
-    ? hotelsRates.map((rate) =>
-        applyPriceFilter(parameters, options, omit(keysToOmit, rate))
+  let augmentedHotelsRates
+
+  if (hotelsRates) {
+    augmentedHotelsRates = hotelsRates.map((rate) =>
+      applyPriceFilter(parameters, options, omit(keysToOmit, rate))
+    )
+
+    if (parameters.sortField !== undefined) {
+      augmentedHotelsRates = applySort(
+        augmentedHotelsRates,
+        parameters as SortBy
       )
-    : undefined
+    }
+  }
 
   const augmentedAnchorHotelsRates = anchorHotelRate
     ? omit(keysToOmit, anchorHotelRate)
