@@ -9,9 +9,7 @@
     "serve": "^11.0.2"
   },
   "dependencies": {
-    "@findhotel/sapi": "file:../../",
-    "cd": "^0.3.3",
-    "sapi-cli-client": "file:../cli"
+    "@findhotel/sapi": "file:../../"
   },
   "scripts": {
     "build": "rollup -c",
