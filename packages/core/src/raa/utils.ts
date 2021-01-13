@@ -1,5 +1,6 @@
 import {RatesResponse} from './raa'
 import {omit} from '../utils'
+import {PRICE_BUCKETS_COUNT} from '../algolia'
 
 import {Rate, Offer} from '../types'
 
@@ -10,12 +11,8 @@ interface Parameters {
     priceMin?: number
     priceMax?: number
   }
-}
-
-interface Options {
   priceBucketWidth: number
   exchangeRate: number
-  priceBucketCount: number
 }
 
 interface SortBy {
@@ -40,16 +37,11 @@ const isOfferInPriceRange = (
   return true
 }
 
-const applyPriceFilter = (
-  parameters: Parameters,
-  options: Options,
-  rate: Rate
-) => {
-  const {filters = {}} = parameters
+const applyPriceFilter = (parameters: Parameters, rate: Rate) => {
+  const {filters = {}, priceBucketWidth, exchangeRate} = parameters
   const {priceMin, priceMax} = filters
-  const {priceBucketCount, priceBucketWidth, exchangeRate} = options
   const upperBound =
-    priceBucketCount * Math.round(priceBucketWidth * exchangeRate)
+    PRICE_BUCKETS_COUNT * Math.round(priceBucketWidth * exchangeRate)
 
   if (priceMin !== undefined && priceMax !== undefined) {
     const hasOfferInPriceRange = rate.offers?.some((offer) =>
@@ -91,10 +83,9 @@ const applySort = (rates: Rate[], sortBy: SortBy) => {
   return rates
 }
 
-export const augmentRAAResponse = (
+export const augmentRaaResponse = (
   ratesResults: RatesResponse,
-  parameters: Parameters,
-  options: Options
+  parameters: Parameters
 ): RatesResponse => {
   const {hotelsRates, anchorHotelRate} = ratesResults
   const keysToOmit = ['errors'] // Idially this should not come from RAA
@@ -103,7 +94,7 @@ export const augmentRAAResponse = (
 
   if (hotelsRates) {
     augmentedHotelsRates = hotelsRates.map((rate) =>
-      applyPriceFilter(parameters, options, omit(keysToOmit, rate))
+      applyPriceFilter(parameters, omit(keysToOmit, rate))
     )
 
     if (parameters.sortField !== undefined) {

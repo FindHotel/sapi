@@ -32,9 +32,9 @@ interface GenerateSearchIdOptions {
 
 export const getIndexName = (index: IndexType): string => {
   const indexNames = {
-    autocomplete: 'prod_autocomplete_v2',
+    autocomplete: 'prod_autocomplete_v2_os000007',
     hotel: 'prod_hotel_v3',
-    hotelranking: 'prod_hotelranking_v1_os000002_hso_availability',
+    hotelranking: 'prod_hotelranking_v1_pp000003_tags',
     lov: 'prod_lov_v2',
     currency: 'prod_curr_v1',
     config: 'prod_sapicfg_v1'

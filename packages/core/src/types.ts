@@ -119,6 +119,7 @@ export type LocalizedString = Record<Language, string>
 export type LocalizedArray = Record<Language, string[]>
 
 interface BasicAnchorHit {
+  pageSize: number
   objectID: string
   placeADN: LocalizedArray
   placeDN: LocalizedArray

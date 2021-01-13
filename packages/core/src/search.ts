@@ -1,24 +1,21 @@
-import differenceInDays from 'date-fns/differenceInDays'
-import format from 'date-fns/format'
-
 import {Base} from '.'
 
 import {
   OnRatesCb,
   GetRatesParameters,
   RatesResponse,
-  augmentRAAResponse
+  augmentRaaResponse
 } from './raa'
 
 import {
-  Configs,
   filterFromHsoConfig,
   HsoConfigType,
   HsoConfig,
-  HsoFilter
+  HsoFilter,
+  DatesConfig
 } from './configs'
 
-import {generateSearchId} from './utils'
+import {generateSearchId, getCheckInNights} from './utils'
 import {getCheckInCheckOutDates} from './get-dates'
 
 import {
@@ -27,8 +24,7 @@ import {
   GeoSearchParameters,
   GeoSearchResults,
   AnchorObject,
-  AnchorType,
-  PRICE_BUCKETS_COUNT
+  AnchorType
 } from './algolia'
 
 import {
@@ -67,6 +63,7 @@ interface Options {
   language: string
   currency: string
   country: string
+  pageSize: number
 }
 
 export type Search = (
@@ -91,40 +88,17 @@ const augmentHitWithRates = (hit: Hotel, rates?: Rate[]): HotelWithRates => {
   }
 }
 
-// TODO: Remove it =)
-const getDataFromStaticResults = (
-  staticResults: GeoSearchResults,
-  anchorHotel?: Hotel
-): StaticResultsData => {
-  const {facets, hits, length, nbHits, offset} = staticResults
-
-  // Remove anchorHotel from results
-  const hitsFiltered = anchorHotel
-    ? hits.filter((hit) => hit.objectID !== anchorHotel.objectID)
-    : hits
+const prepareResults = (results: GeoSearchResults, anchorHotel?: Hotel) => {
+  const {facets, hits, length, nbHits, offset} = results
 
   return {
-    facets,
-    hits: hitsFiltered,
     anchorHotel,
+    facets,
+    hits,
     length,
     nbHits,
     offset
   }
-}
-
-const getCheckInNights = (
-  checkIn?: string,
-  checkOut?: string
-): string | undefined => {
-  if (!checkIn || !checkOut) return
-
-  const checkInDate = new Date(checkIn)
-  const checkOutDate = new Date(checkOut)
-  const checkInFormatted = format(checkInDate, 'yyMMdd')
-  const nights = differenceInDays(checkOutDate, checkInDate)
-
-  return `${checkInFormatted}-${nights}`
 }
 
 const getHsoConfigType = (anchorType: AnchorType): HsoConfigType => {
@@ -162,10 +136,12 @@ const getHsoFilter = (
 const prepareGeoSearchParameters = (
   anchor: Anchor,
   parameters: SearchParameters,
+  offset: number,
   anchorHotelId?: string
 ): GeoSearchParameters => {
   const geoSearchParameters = {
     ...parameters,
+    offset,
     anchorHotelId
   }
 
@@ -195,7 +171,7 @@ const prepareGeoSearchParameters = (
 const prepareSearchParameters = (
   parameters: ApiSearchParameters,
   options: Options,
-  configs: Configs
+  dates: DatesConfig
 ): SearchParameters => {
   const {
     searchId,
@@ -203,7 +179,7 @@ const prepareSearchParameters = (
     deviceCategory = DEFAULT_DEVICE_CATEGORY
   } = parameters
 
-  const {checkIn, checkOut} = getCheckInCheckOutDates(parameters, configs.dates)
+  const {checkIn, checkOut} = getCheckInCheckOutDates(parameters, dates)
 
   return {
     ...parameters,
@@ -215,10 +191,11 @@ const prepareSearchParameters = (
   }
 }
 
-const generateDestinationString = (hits: Hotel[]): string =>
-  hits.map((hit) => hit.objectID).join(',')
+const generateDestinationString = (hits: Hotel[]) => {
+  return hits.map((hit) => hit.objectID).join(',')
+}
 
-const hotelsHaveStaticPosition = (parameters: SearchParameters): boolean => {
+const hotelsHaveStaticPosition = (parameters: SearchParameters) => {
   if (parameters.sortField === 'price') {
     return false
   }
@@ -233,22 +210,37 @@ const hotelsHaveStaticPosition = (parameters: SearchParameters): boolean => {
   return true
 }
 
+const getRequestSize = (
+  anchorObject: AnchorObject,
+  parameters: SearchParameters,
+  options: Options
+) => {
+  const {anchor, anchorType} = anchorObject
+
+  if (
+    anchor.pageSize !== undefined &&
+    anchor.pageSize >= options.pageSize &&
+    parameters.filters?.priceMin === undefined &&
+    parameters.filters?.priceMax === undefined &&
+    parameters.sortField !== 'price'
+  ) {
+    return anchor.pageSize
+  }
+
+  return anchorType === AnchorType.Hotel ? 45 : 65
+}
+
 export const search = (base: Base): Search => {
   const {algoliaClient, raaClient, options, configs} = base
-  const {hso, exchangeRates} = configs
-  const {language, fallBackLanguages, pageSize, currency} = options
+  const {hso, exchangeRates, dates} = configs
+  const {language, fallBackLanguages, currency} = options
   const languages = [language, ...fallBackLanguages]
   const exchangeRate = exchangeRates[currency]
 
   return async (parameters, callbacks) => {
-    const {onSearch, onHotels, onRates, onComplete} = callbacks
     let loadMoreOffset = 0
-
-    const searchParameters = prepareSearchParameters(
-      parameters,
-      options,
-      configs
-    )
+    const {onSearch, onHotels, onRates, onComplete} = callbacks
+    const searchParameters = prepareSearchParameters(parameters, options, dates)
 
     if (typeof onSearch === 'function') {
       onSearch({
@@ -268,27 +260,25 @@ export const search = (base: Base): Search => {
 
     const geoSearchFn = geoSearch(algoliaClient, {
       languages,
-      pageSize,
-      hsoFilter: getHsoFilter(hso, searchParameters, anchorObject),
       exchangeRate,
-      priceBucketWidth: anchor.priceBucketWidth
+      priceBucketWidth: anchor.priceBucketWidth,
+      requestSize: getRequestSize(anchorObject, searchParameters, options),
+      hsoFilter: getHsoFilter(hso, searchParameters, anchorObject)
     })
 
-    const runSearch = async (offset = 0): Promise<ResultsWithRates> => {
-      const geoSearchParameters = prepareGeoSearchParameters(
-        anchor,
-        {
-          ...searchParameters,
-          offset
-        },
-        anchorHotel?.objectID
+    const run = async (offset = 0): Promise<ResultsWithRates> => {
+      const results = await geoSearchFn(
+        prepareGeoSearchParameters(
+          anchor,
+          searchParameters,
+          offset,
+          anchorHotel?.objectID
+        )
       )
 
-      const results = await geoSearchFn(geoSearchParameters)
-
-      const staticResults: StaticResults = {
+      const staticResults = {
         anchor,
-        results: getDataFromStaticResults(results, anchorHotel)
+        results: prepareResults(results, anchorHotel)
       }
 
       if (typeof onHotels === 'function') {
@@ -301,7 +291,7 @@ export const search = (base: Base): Search => {
         })
       }
 
-      let ratesResults
+      let rates
 
       /** Request rates */
       if (searchParameters.rates) {
@@ -311,44 +301,42 @@ export const search = (base: Base): Search => {
           anchorDestination: anchorHotel?.objectID
         }
 
-        const {priceBucketWidth} = anchor
-
-        ratesResults = await raaClient.getRates(
+        rates = await raaClient.getRates(
           ratesParameters,
           (response: RatesResponse) => {
             if (typeof onRates === 'function') {
               onRates(
-                augmentRAAResponse(response, ratesParameters, {
-                  exchangeRate,
-                  priceBucketWidth,
-                  priceBucketCount: PRICE_BUCKETS_COUNT
+                augmentRaaResponse(response, {
+                  ...ratesParameters,
+                  ...anchor,
+                  exchangeRate
                 })
               )
             }
           }
         )
 
-        ratesResults = augmentRAAResponse(ratesResults, ratesParameters, {
-          exchangeRate,
-          priceBucketWidth,
-          priceBucketCount: PRICE_BUCKETS_COUNT
+        rates = augmentRaaResponse(rates, {
+          ...ratesParameters,
+          ...anchor,
+          exchangeRate
         })
       }
 
       if (typeof onComplete === 'function') {
         onComplete({
           ...staticResults,
-          rates: ratesResults
+          rates
         })
       }
 
       return {
         ...staticResults,
-        rates: ratesResults
+        rates
       }
     }
 
-    const searchResults = await runSearch(searchParameters.offset)
+    const searchResults = await run(searchParameters.offset)
 
     return {
       getHits: () => searchResults.results.hits,
@@ -398,10 +386,15 @@ export const search = (base: Base): Search => {
         }
       },
       loadMore: async () => {
-        loadMoreOffset += pageSize
-        const searchResults = await runSearch(loadMoreOffset)
+        const requestSize = getRequestSize(
+          anchorObject,
+          searchParameters,
+          options
+        )
 
-        return searchResults
+        loadMoreOffset += requestSize
+
+        return run(loadMoreOffset)
       }
     }
   }

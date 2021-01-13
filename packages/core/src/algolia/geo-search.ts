@@ -19,7 +19,7 @@ const DEFAULT_PRECISION = 5000
 
 interface Options {
   languages: string[]
-  pageSize: number
+  requestSize: number
   priceBucketWidth: number
   exchangeRate: number
   hsoFilter: HsoFilter
@@ -230,7 +230,7 @@ export const geoSearch = (
     boundingBox,
     polygon,
     geolocation,
-    length = options.pageSize,
+    length = options.requestSize,
     offset = 0,
     filters = {},
     anchorHotelId

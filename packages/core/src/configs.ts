@@ -54,7 +54,7 @@ export type Configs = {
 
 export type GetConfig = () => Promise<Configs>
 
-const CLIENT_ID = 'findhotel-net' // Should come from client configuration?
+const CLIENT_ID = 'efa703d5c0057a24487bc9bdcb597770' // Should come from client configuration?
 
 /**
  * Add Jexl map to replace placeholders with values

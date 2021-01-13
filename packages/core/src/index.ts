@@ -7,7 +7,7 @@ import {getConfigs, Configs} from './configs'
 import {AnonymousId} from './types'
 
 const ALGOLIA_APP_ID = '4UYGJP42KQ'
-const RAA_ENDPOINT = 'wss://server.tst.eu.daedalus.fih.io/'
+const RAA_ENDPOINT = 'wss://server.prd.eu.daedalus.fih.io/'
 
 export type AlgoliaClient = any
 
