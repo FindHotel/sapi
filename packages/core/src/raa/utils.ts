@@ -20,6 +20,12 @@ interface SortBy {
   sortOrder?: string
 }
 
+export const cheapestDisplayedRate = (rate: Rate) => {
+  if (rate.offers.length === 0) return 0
+
+  return Math.min(...rate.offers.map((offer) => offer.nightlyRate))
+}
+
 const isOfferInPriceRange = (
   offer: Offer,
   upperBound: number,
@@ -57,12 +63,6 @@ const applyPriceFilter = (parameters: Parameters, rate: Rate) => {
   }
 
   return rate
-}
-
-export const cheapestDisplayedRate = (rate: Rate) => {
-  if (rate.offers.length === 0) return 0
-
-  return Math.min(...rate.offers.map((offer) => offer.nightlyRate))
 }
 
 const sortByPrice = (rates: Rate[], sortOrder: string) => {

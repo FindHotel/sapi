@@ -227,7 +227,7 @@ const getRequestSize = (
     return anchor.pageSize
   }
 
-  return anchorType === AnchorType.Hotel ? 45 : 65
+  return anchorType === AnchorType.Hotel ? 65 : 45
 }
 
 export const search = (base: Base): Search => {
