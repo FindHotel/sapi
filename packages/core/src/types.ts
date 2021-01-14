@@ -40,6 +40,7 @@ export interface OptionalSearchParameters {
   profileId?: string
   searchId?: string
   useAlternativeRaaKeys?: boolean
+  freeCancellation?: boolean
 }
 
 export interface PlaceSearchParameters extends OptionalSearchParameters {

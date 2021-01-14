@@ -9,7 +9,8 @@ const getSearchParameter = (name, isMultiValue, type) => {
 
   const typeCasts = {
     number: (parameter) => parameter && Number(parameter),
-    string: (parameter) => parameter && parameter.toString()
+    string: (parameter) => parameter && parameter.toString(),
+    boolean: (parameter) => parameter && Boolean(parameter)
   }
 
   return urlParameterArray.length === 1 && !isMultiValue
@@ -88,13 +89,15 @@ const run = async () => {
       themes: getSearchParameter('themes', true),
       noHostels: getSearchParameter('noHostels'),
       priceMin: getSearchParameter('priceMin', false, 'number'),
-      priceMax: getSearchParameter('priceMax', false, 'number')
+      priceMax: getSearchParameter('priceMax', false, 'number'),
+      freeCancellation: getSearchParameter('freeCancellation', false, 'boolean')
     },
     cugDeals: 'signed_in, offline',
     deviceCategory: 'desktop',
     profileId: getSearchParameter('profile') ?? 'default',
     searchId: '0edf6cf0ae429cd67fe5005c5dffa0b8951897a8',
     useAlternativeRaaKeys: true,
+    getAllOffers: false,
     rates: true
   }
 

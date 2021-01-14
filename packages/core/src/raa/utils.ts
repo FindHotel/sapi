@@ -20,6 +20,20 @@ interface SortBy {
   sortOrder?: string
 }
 
+interface SortingBoostParameters {
+  filters?: {
+    freeCancellation?: boolean
+  }
+}
+
+export const generateSortingBoost = (
+  parameters: SortingBoostParameters
+): string | undefined => {
+  return parameters?.filters?.freeCancellation
+    ? 'freeCancellation=true:100'
+    : undefined
+}
+
 export const cheapestDisplayedRate = (rate: Rate) => {
   if (rate.offers.length === 0) return 0
 

@@ -1,5 +1,7 @@
 import ReconnectingWebSocket from 'reconnecting-websocket'
 
+import {generateSortingBoost} from './utils'
+
 import {Rate, RaaResponse} from '../types'
 
 export interface RaaClient {
@@ -31,6 +33,9 @@ export interface GetRatesParameters {
   rooms: string
   deviceCategory: string
   searchId: string
+  filters?: {
+    freeCancellation?: boolean
+  }
 }
 
 export interface RatesResponse {
@@ -79,7 +84,8 @@ const createRaaRequest = (
     includeTaxes: options.includeTaxes,
     skipBackendAugmentation: options.skipBackendAugmentation,
     facetsEnabled: options.facetsEnabled,
-    sapiCliKey: options.sapiCliKey
+    sapiCliKey: options.sapiCliKey,
+    sortingBoost: generateSortingBoost(parameters)
   }
 
   let queryString
