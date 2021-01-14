@@ -2,12 +2,17 @@ import algoliasearch from 'algoliasearch'
 
 import {search, Search} from './search'
 import {raa, RaaClient} from './raa'
-import {getConfigs, Configs} from './configs'
+import {
+  loadConfigs,
+  loadAppConfig,
+  AppConfig,
+  Configs,
+  DatesConfig
+} from './configs'
 
 import {AnonymousId} from './types'
 
 const ALGOLIA_APP_ID = '4UYGJP42KQ'
-const RAA_ENDPOINT = 'wss://server.prd.eu.daedalus.fih.io/'
 
 export type AlgoliaClient = any
 
@@ -40,12 +45,17 @@ export interface SapiClientOptions {
   facetsEnabled?: boolean
   /** Used to identify SAPI Cli interface on the RAA backend */
   sapiCliKey?: string
+  /** A/B tests variation IDs */
+  variationIds: Record<string, string>
 }
 
 export type Base = {
+  appConfig: AppConfig
   algoliaClient: AlgoliaClient
   raaClient: RaaClient
-  configs: Configs
+  configs: Configs & {
+    dates: DatesConfig
+  }
   options: SapiClientOptions & {
     pageSize: number
   }
@@ -56,32 +66,41 @@ const getConfig = (base: Base) => (): Configs => {
 }
 
 const sapiClient = async (
+  clientId: string,
   clientKey: string,
   options: SapiClientOptions
 ): Promise<SapiClient> => {
+  if (!clientId) {
+    throw new Error('Sapi client requires client id')
+  }
+
   if (!clientKey) {
     throw new Error('Sapi client requires a valid client key')
   }
 
-  const {language, fallBackLanguages, currency} = options
+  const {language, fallBackLanguages, currency, variationIds} = options
+  const languages = [language, ...fallBackLanguages]
 
   const algoliaClient = algoliasearch(ALGOLIA_APP_ID, clientKey)
-
-  const raaClient = raa(RAA_ENDPOINT, options)
-
-  const configs = await getConfigs(
-    algoliaClient,
-    [language, ...fallBackLanguages],
-    [currency, 'EUR']
-  )()
+  const appConfig = await loadAppConfig(algoliaClient, variationIds)(clientId)
+  const raaEndpoint = appConfig.getRaaEndpoint()
+  const raaClient = raa(raaEndpoint, options)
+  const configs = await loadConfigs(algoliaClient, appConfig, languages, [
+    currency,
+    'EUR'
+  ])()
 
   const base: Base = {
+    appConfig,
     algoliaClient,
     raaClient,
-    configs,
+    configs: {
+      ...configs,
+      dates: appConfig.getDatesConfig() // Move to options?
+    },
     options: {
       ...options,
-      pageSize: 20
+      pageSize: appConfig.getPageSize()
     }
   }
 

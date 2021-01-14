@@ -1,11 +1,13 @@
 import {AlgoliaClient} from '..'
+import {IndexNameGetter} from '../configs'
+
 import {
-  getIndexName,
   getLocalizedAttributes,
   hitToHotel,
   hitToHotelTypeAnchor,
   hitToPlaceTypeAnchor
 } from './utils'
+
 import {Anchor, Hotel, Location} from '../types'
 
 interface GetAnchorParameters {
@@ -89,7 +91,8 @@ const getAnchorType = (parameters: GetAnchorParameters): AnchorType => {
 }
 
 export const getAnchor = (
-  algoliaClient: AlgoliaClient,
+  {search}: AlgoliaClient,
+  {getIndexName}: IndexNameGetter,
   languages: string[]
 ) => async (parameters: GetAnchorParameters): Promise<AnchorObject> => {
   const anchorType = getAnchorType(parameters)
@@ -144,7 +147,7 @@ export const getAnchor = (
     }
   }
 
-  const response = await algoliaClient.search(requests)
+  const response = await search(requests)
   const [anchorResponse, anchorHotelResponse] = response.results || []
 
   const anchor = hitToAnchor(anchorResponse?.hits[0], languages)

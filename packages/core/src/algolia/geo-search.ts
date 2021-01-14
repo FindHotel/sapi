@@ -1,6 +1,6 @@
 import {AlgoliaClient} from '..'
-import {getIndexName, getLocalizedAttributes, hitToHotel} from './utils'
-import {HsoFilter} from '../configs'
+import {getLocalizedAttributes, hitToHotel} from './utils'
+import {HsoFilter, IndexNameGetter} from '../configs'
 import {
   OptionalSearchParameters,
   Hotel,
@@ -223,7 +223,8 @@ const facets = [
 ]
 
 export const geoSearch = (
-  algoliaClient: AlgoliaClient,
+  {search}: AlgoliaClient,
+  {getIndexName}: IndexNameGetter,
   options: Options
 ) => async (parameters: GeoSearchParameters): Promise<GeoSearchResults> => {
   const {
@@ -266,7 +267,7 @@ export const geoSearch = (
     }
   ]
 
-  const response = await algoliaClient.search(requests)
+  const response = await search(requests)
   const results = response.results[0]
 
   const hits = results.hits.map((hit: Hit) =>

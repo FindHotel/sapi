@@ -1,7 +1,8 @@
 import jexl from 'jexl'
 
-import {AlgoliaClient} from '.'
-import {getIndexName, getLocalizedAttributes} from './algolia'
+import {AlgoliaClient} from '..'
+import {IndexNameGetter} from '.'
+import {getLocalizedAttributes} from '../algolia'
 
 interface Response {
   results: Array<{hits: any}>
@@ -49,7 +50,6 @@ export type Configs = {
   hso: HsoConfig[]
   lov: ListOfValuesItem[]
   exchangeRates: ExchangeRates
-  dates: DatesConfig
 }
 
 export type GetConfig = () => Promise<Configs>
@@ -133,8 +133,9 @@ const getLovAttributesToRetrieve = (languages: string[]): string[] => {
   return ['id', 'categoryID', 'objectID', ...localizedAttributes]
 }
 
-export const getConfigs = (
-  algoliaClient: AlgoliaClient,
+export const loadConfigs = (
+  {search}: AlgoliaClient,
+  {getIndexName}: IndexNameGetter,
   languages: string[],
   currencies: string[]
 ): GetConfig => async () => {
@@ -144,7 +145,7 @@ export const getConfigs = (
 
   const requests = [
     {
-      indexName: getIndexName('hotelranking'),
+      indexName: getIndexName('hso'),
       params: {
         attributesToHighlight: []
       }
@@ -168,26 +169,15 @@ export const getConfigs = (
         facetFilters: [currencyFacetFilters],
         getRankingInfo: false
       }
-    },
-    {
-      indexName: getIndexName('config'),
-      params: {
-        attributesToHighlight: [],
-        facetFilters: [[`objectID:${CLIENT_ID}`]]
-      }
     }
   ]
 
-  const {results}: Response = await algoliaClient.search(requests)
-  const [hso, lov, exchangeRates, config] = results.map((result) => result.hits)
+  const {results}: Response = await search(requests)
+  const [hso, lov, exchangeRates] = results.map((result) => result.hits)
 
   return {
     hso,
     lov,
-    exchangeRates: exchangeRatesFromResponse(exchangeRates),
-    dates: {
-      daysFromNow: config[0]?.daysFromNow ?? 45,
-      blockedDefaultDates: config[0]?.blockedDefaultDates ?? []
-    }
+    exchangeRates: exchangeRatesFromResponse(exchangeRates)
   }
 }

@@ -227,11 +227,11 @@ const getRequestSize = (
     return anchor.pageSize
   }
 
-  return anchorType === AnchorType.Hotel ? 65 : 45
+  return anchorType === AnchorType.Hotel ? 45 : 65
 }
 
 export const search = (base: Base): Search => {
-  const {algoliaClient, raaClient, options, configs} = base
+  const {appConfig, algoliaClient, raaClient, options, configs} = base
   const {hso, exchangeRates, dates} = configs
   const {language, fallBackLanguages, currency} = options
   const languages = [language, ...fallBackLanguages]
@@ -253,12 +253,13 @@ export const search = (base: Base): Search => {
 
     const anchorObject = await getAnchor(
       algoliaClient,
+      appConfig,
       languages
     )(searchParameters)
 
     const {anchor, anchorHotel} = anchorObject
 
-    const geoSearchFn = geoSearch(algoliaClient, {
+    const geoSearchFn = geoSearch(algoliaClient, appConfig, {
       languages,
       exchangeRate,
       priceBucketWidth: anchor.priceBucketWidth,

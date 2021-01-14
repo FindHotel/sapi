@@ -15,36 +15,11 @@ import {
 
 type LocalizedAttribute = LocalizedString | LocalizedArray
 
-type IndexType =
-  | 'autocomplete'
-  | 'hotel'
-  | 'hotelranking'
-  | 'lov'
-  | 'currency'
-  | 'config'
-
 interface GenerateSearchIdOptions {
   anonymousId: AnonymousId
   language: string
   currency: string
   country: string
-}
-
-export const getIndexName = (index: IndexType): string => {
-  const indexNames = {
-    autocomplete: 'prod_autocomplete_v2_os000007',
-    hotel: 'prod_hotel_v3',
-    hotelranking: 'prod_hotelranking_v1_pp000003_tags',
-    lov: 'prod_lov_v2',
-    currency: 'prod_curr_v1',
-    config: 'prod_sapicfg_v1'
-  }
-
-  const indexName = indexNames[index]
-
-  if (!indexName) throw new TypeError(`Unknown index "${index}"`)
-
-  return indexName
 }
 
 export const generateSearchId = (
