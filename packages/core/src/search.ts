@@ -377,10 +377,12 @@ export const search = (base: Base): Search => {
       },
       getHitsWithRates: () => {
         return {
-          anchorHotel: {
-            ...searchResults.results.anchorHotel,
-            rates: searchResults.rates?.anchorHotelRate
-          },
+          anchorHotel: searchResults.results.anchorHotel
+            ? {
+                ...searchResults.results.anchorHotel,
+                rates: searchResults.rates?.anchorHotelRate
+              }
+            : undefined,
           hits: searchResults.results.hits.map((hit: Hotel) =>
             augmentHitWithRates(hit, searchResults.rates?.hotelsRates)
           )
@@ -395,7 +397,21 @@ export const search = (base: Base): Search => {
 
         loadMoreOffset += requestSize
 
-        return run(loadMoreOffset)
+        const nextResults = await run(loadMoreOffset)
+
+        return {
+          getHitsWithRates: () => {
+            return {
+              anchorHotel: {
+                ...nextResults.results.anchorHotel,
+                rates: nextResults.rates?.anchorHotelRate
+              },
+              hits: nextResults.results.hits.map((hit: Hotel) =>
+                augmentHitWithRates(hit, nextResults.rates?.hotelsRates)
+              )
+            }
+          }
+        }
       }
     }
   }

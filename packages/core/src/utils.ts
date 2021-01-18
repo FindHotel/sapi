@@ -1,5 +1,6 @@
 import hash from 'object-hash'
 import differenceInDays from 'date-fns/differenceInDays'
+import parseISO from 'date-fns/parseISO'
 import format from 'date-fns/format'
 
 import {AnonymousId, ApiSearchParameters} from './types'
@@ -12,7 +13,7 @@ interface GenerateSearchIdOptions {
 }
 
 export const dateToMiddayUTC = (date: string): Date =>
-  new Date(`${date} 12:00:00 UTC`)
+  parseISO(`${date} 12:00:00`)
 
 export const getCheckInNights = (checkIn?: string, checkOut?: string) => {
   if (!checkIn || !checkOut) return

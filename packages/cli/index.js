@@ -46,10 +46,10 @@ async function search(placeId) {
         console.log('Search started', JSON.stringify(response))
       },
       onHotels: (response) => {
-        console.log('Hotels fetched', JSON.stringify(response))
+        // Console.log('Hotels fetched', JSON.stringify(response))
       },
       onRates: (response) => {
-        console.log('Rates reseived', JSON.stringify(response))
+        // Console.log('Rates reseived', JSON.stringify(response))
       },
       onComplete: (response) => {
         console.log('Search completed', JSON.stringify(response))

@@ -2,6 +2,7 @@ import hash from 'object-hash'
 
 import {
   AnonymousId,
+  AnchorHit,
   HotelAnchorHit,
   PlaceAnchorHit,
   HotelAnchor,
@@ -12,6 +13,8 @@ import {
   LocalizedArray,
   Language
 } from '../types'
+
+type AnchorHitOrHit = AnchorHit | Hit
 
 type LocalizedAttribute = LocalizedString | LocalizedArray
 
@@ -99,6 +102,10 @@ const attributeWithFallback = (
     result = attr[fallbackLang]
   }
 
+  if (result === undefined) {
+    result = []
+  }
+
   return typeof result === 'string' ? [result] : result
 }
 
@@ -119,7 +126,35 @@ const mergeToLocalizedString = (
   return arrayToLocalizedString(output, languages)
 }
 
-export const hitToHotel = (hit: Hit, languages: Language[]): Hotel => {
+const generateHit = (
+  hit: AnchorHitOrHit,
+  requiredAttributes: Record<string, unknown>
+): AnchorHitOrHit => {
+  try {
+    for (const key in requiredAttributes) {
+      if (hit[key as keyof AnchorHitOrHit] === undefined) {
+        throw new TypeError(`Hotel ${hit.objectID} is missing ${key} field`)
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-implicit-any-catch
+  } catch (error) {
+    console.error(error)
+  }
+
+  return {
+    ...requiredAttributes,
+    ...hit
+  }
+}
+
+export const hitToHotel = (algoliaHit: Hit, languages: Language[]): Hotel => {
+  const hit = generateHit(algoliaHit, {
+    address: {},
+    placeADName: {},
+    placeDN: {},
+    hotelName: {}
+  }) as Hit
+
   return {
     ...hit,
     displayAddress: mergeToLocalizedString(
@@ -135,16 +170,29 @@ export const hitToHotel = (hit: Hit, languages: Language[]): Hotel => {
 export const hitToHotelTypeAnchor = (
   anchorHit: HotelAnchorHit,
   languages: Language[]
-): HotelAnchor => ({
-  ...anchorHit,
-  hotelName: toLocalizedString(anchorHit.hotelName, languages),
-  placeDisplayName: arrayToLocalizedString(anchorHit.placeDN, languages)
-})
+): HotelAnchor => {
+  const hit = generateHit(anchorHit, {
+    hotelName: {},
+    placeDN: {}
+  }) as HotelAnchorHit
+
+  return {
+    ...hit,
+    hotelName: toLocalizedString(hit.hotelName, languages),
+    placeDisplayName: arrayToLocalizedString(hit.placeDN, languages)
+  }
+}
 
 export const hitToPlaceTypeAnchor = (
   anchorHit: PlaceAnchorHit,
   languages: Language[]
-): PlaceAnchor => ({
-  ...anchorHit,
-  placeDisplayName: arrayToLocalizedString(anchorHit.placeDN, languages)
-})
+): PlaceAnchor => {
+  const hit = generateHit(anchorHit, {
+    placeDN: {}
+  }) as PlaceAnchorHit
+
+  return {
+    ...hit,
+    placeDisplayName: arrayToLocalizedString(hit.placeDN, languages)
+  }
+}
