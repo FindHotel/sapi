@@ -18,7 +18,7 @@ export type AlgoliaClient = any
 
 export interface SapiClient {
   search: Search
-  getConfig: () => Configs
+  getConfig: () => Configs | undefined
 }
 
 /** Options for initializing the Search API client */
@@ -57,11 +57,11 @@ export type Base = {
     dates: DatesConfig
   }
   options: SapiClientOptions & {
-    pageSize: number
+    pageSize: number // REVIEW: this is also defined in SapiClientOptions, is it still needed?
   }
 }
 
-const getConfig = (base: Base) => (): Configs => {
+const getConfig = (base: Base) => (): Configs | undefined => {
   return base?.configs
 }
 

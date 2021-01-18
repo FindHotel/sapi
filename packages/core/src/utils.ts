@@ -62,12 +62,12 @@ export const generateSearchId = (
 }
 
 /**
- * Removes specified @keys from @object
+ * Removes specified `keys` from `object`
  *
  * @typeParam K string
  * @typeParam T object
- * @param keys keys of the properties to remove from @object
- * @param object target object to emit @properties from
+ * @param keys keys of the properties to remove from `object`
+ * @param object target object to emit `properties` from
  */
 export const omit = <K extends keyof T, T>(
   keys: K[],
