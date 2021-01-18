@@ -4,7 +4,7 @@ import lastDayOfISOWeek from 'date-fns/lastDayOfISOWeek'
 import addWeeks from 'date-fns/addWeeks'
 
 import {DatesConfig} from './configs'
-import {dateToMiddayUTC} from './utils'
+import {dateStringToMiddayUTC} from './utils'
 
 interface GetDatesParameters {
   checkIn?: string
@@ -24,7 +24,7 @@ const getNonBlockedDefaultCheckInDate = ({
   daysFromNow,
   blockedDefaultDates
 }: DatesConfig): Date => {
-  const todayUTC = dateToMiddayUTC(format(new Date(), DATE_FORMAT))
+  const todayUTC = dateStringToMiddayUTC(format(new Date(), DATE_FORMAT))
   let checkIn = lastDayOfISOWeek(addDays(todayUTC, daysFromNow))
 
   const isDateBlocked = (date: string): boolean =>
@@ -42,7 +42,7 @@ export const getCheckInCheckOutDates = (
   datesConfig: DatesConfig
 ): CheckInCheckOutDates => {
   const {checkIn, checkOut, dayDistance, nights = 1} = parameters
-  const todayUTC = dateToMiddayUTC(format(new Date(), DATE_FORMAT))
+  const todayUTC = dateStringToMiddayUTC(format(new Date(), DATE_FORMAT))
 
   let checkInDate: Date
 

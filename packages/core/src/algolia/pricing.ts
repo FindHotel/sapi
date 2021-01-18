@@ -1,7 +1,7 @@
 import differenceInDays from 'date-fns/differenceInDays'
 import isWeekend from 'date-fns/isWeekend'
 
-import {dateToMiddayUTC} from '../utils'
+import {dateStringToMiddayUTC} from '../utils'
 
 interface PriceFilterParameters {
   checkIn?: string
@@ -32,8 +32,8 @@ const getPriceBucketName = (checkIn?: string, checkOut?: string): string => {
     return 'pricing.medianRateBkt'
   }
 
-  const checkInDate = dateToMiddayUTC(checkIn)
-  const checkOutDate = dateToMiddayUTC(checkOut)
+  const checkInDate = dateStringToMiddayUTC(checkIn)
+  const checkOutDate = dateStringToMiddayUTC(checkOut)
   const lengthOfStay = differenceInDays(checkOutDate, checkInDate)
 
   if (lengthOfStay === 1) {

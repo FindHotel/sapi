@@ -12,7 +12,12 @@ interface GenerateSearchIdOptions {
   country: string
 }
 
-export const dateToMiddayUTC = (date: string): Date =>
+export const dateFormat = (
+  date: (string | null | undefined) | (Date | null | undefined),
+  dateFormat: string
+) => (date ? format(date, dateFormat) : '')
+
+export const dateStringToMiddayUTC = (date: string): Date =>
   parseISO(`${date} 12:00:00`)
 
 export const getCheckInNights = (checkIn?: string, checkOut?: string) => {
