@@ -1,97 +1,131 @@
 import algoliasearch from 'algoliasearch'
 
 import {search, Search} from './search'
+import {raa, RaaClient} from './raa'
+import {
+  loadConfigs,
+  loadAppConfig,
+  AppConfig,
+  Configs,
+  DatesConfig,
+  ListOfValuesItem,
+  ExchangeRates
+} from './configs'
 
-import {raa} from './raa'
-
-import {getConfigs} from './configs'
+import {AnonymousId} from './types'
 
 const ALGOLIA_APP_ID = '4UYGJP42KQ'
-const RAA_ENDPOINT = 'wss://server.tst.eu.daedalus.fih.io/'
 
 export type AlgoliaClient = any
 
-/** Unique ID identifying users
- * @default new UUID
- */
-export type anonymousId = string
-
-export type SapiClient = {
+export interface SapiClient {
   search: Search
-  getListOfValues: any
+  getConfig: () => {
+    lov: ListOfValuesItem[]
+    exchangeRates: ExchangeRates
+  }
 }
 
 /** Options for initializing the Search API client */
-export type SapiClientOptions = {
-  anonymousId: anonymousId
+export interface SapiClientOptions {
+  /** Unique ID identifying users */
+  anonymousId: AnonymousId
   /** Language code for selected user language */
   language: string
   /** Currency code for selected user currency */
   currency: string
-  /** Currency code for selected user origin country */
-  country: string
+  /** Country code for selected user origin userCountry */
+  userCountry: string
+  /** Page size */
+  pageSize: number
+  /** Include or not local taxes based on localisation logic */
+  includeLocalTaxes?: boolean
+  /** Include or not taxes based on localisation logic */
+  includeTaxes?: boolean
+  /** Skip backend offers augmentation */
+  skipBackendAugmentation?: boolean
+  /** Enable raa faceting */
+  facetsEnabled?: boolean
+  /** Used to identify SAPI Cli interface on the RAA backend */
+  sapiCliKey?: string
+  /** A/B tests variation IDs */
+  variationIds: Record<string, string>
 }
 
-/**
- * Base configuration for the Search API client
- *
- * @internal
- * */
-export type Base = {
+export interface Base {
+  appConfig: AppConfig
   algoliaClient: AlgoliaClient
-  raaClient: any
-  configs: {
-    lov: any
-    hso: any
-    appConfig: any
+  raaClient: RaaClient
+  configs: Configs & {
+    dates: DatesConfig
   }
   options: SapiClientOptions & {
-    exchangeRate: number
+    requestSize: number
+    priceBucketsCount: number
+    languages: string[]
   }
 }
 
-const getListOfValues = (base?: Base) => () => {
-  return base?.configs?.lov
+const getConfig = (base: Base) => (): {
+  lov: ListOfValuesItem[]
+  exchangeRates: ExchangeRates
+} => {
+  return {
+    exchangeRates: base.configs.exchangeRates,
+    lov: base.configs.lov
+  }
 }
 
-/**
- * @returns a string `yyyy-mm-dd-lengthOfStay`
- */
-const getConfig = (base?: Base) => () => {
-  return base?.configs
-}
-
-const sapiClient = async (
+const sapi = async (
+  clientId: string,
   clientKey: string,
-  options: SapiClientOptions
+  clientOptions: SapiClientOptions
 ): Promise<SapiClient> => {
+  if (!clientId) {
+    throw new Error('Sapi client requires client id')
+  }
+
   if (!clientKey) {
     throw new Error('Sapi client requires a valid client key')
   }
 
-  const {language} = options
+  const options = {
+    ...clientOptions,
+    currency: clientOptions.currency?.toUpperCase() ?? 'USD'
+  }
+
+  const {language, currency, variationIds} = options
   const algoliaClient = algoliasearch(ALGOLIA_APP_ID, clientKey)
-  const raaClient = raa(RAA_ENDPOINT)
-  const configs = await getConfigs(algoliaClient, language)()
+  const appConfig = await loadAppConfig(algoliaClient, variationIds)(clientId)
+  const raaClient = raa(appConfig.getRaaEndpoint(), options)
+  const fallbackLanguages = appConfig.getFallbackLanguages(language) ?? []
+  const languages = [language, ...fallbackLanguages, 'en']
+
+  const configs = await loadConfigs(algoliaClient, appConfig, {
+    languages,
+    currencies: [currency, 'EUR']
+  })()
 
   const base: Base = {
+    appConfig,
     algoliaClient,
     raaClient,
     configs: {
       ...configs,
-      appConfig: {}
+      dates: appConfig.getDatesConfig() // Move to options?
     },
     options: {
       ...options,
-      exchangeRate: 1
+      languages,
+      requestSize: appConfig.getRequestSize(),
+      priceBucketsCount: appConfig.getPriceBucketsCount()
     }
   }
 
   return {
     search: search(base),
-    getListOfValues: getListOfValues(base),
     getConfig: getConfig(base)
   }
 }
 
-export default sapiClient
+export default sapi

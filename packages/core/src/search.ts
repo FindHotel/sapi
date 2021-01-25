@@ -1,59 +1,93 @@
-import {AlgoliaClient, SapiClientOptions, Base} from '.'
+import {Base} from '.'
 
-import {Rates, OnRatesCb} from './raa'
+import {OnRatesReceived, RatesResponse, augmentRaaResponse} from './raa'
 
 import {
-  placeSearch,
-  Hit,
-  PlaceSearchParameters,
-  PlaceSearchResults,
-  PlaceSearchResponse,
-  PlaceMeta
+  filterFromHsoConfig,
+  HsoConfigType,
+  HsoConfig,
+  HsoFilter,
+  DatesConfig
+} from './configs'
+
+import {generateSearchId} from './utils'
+import {getCheckInCheckOutDates} from './dates'
+
+import {
+  getAnchor,
+  geoSearch,
+  getCheckInNights,
+  GeoSearchParameters,
+  GeoSearchResults,
+  AnchorObject,
+  AnchorType
 } from './algolia'
 
-import {getFilterFromConfig} from './configs'
+import {
+  Anchor,
+  PlaceAnchor,
+  ApiSearchParameters,
+  Hotel,
+  Rate,
+  AnonymousId,
+  SearchParameters
+} from './types'
 
-/** Callback for when static hotels are loaded */
-type OnHotelsCb = (hotels: PlaceSearchResponse) => void
+type OnStart = (response: Record<string, unknown>) => void
+type OnHotelsReceived = (response: Record<string, unknown>) => void
+type OnComplete = (response: Record<string, unknown>) => void
 
-/** Callback for when all hotels are offers are loaded */
-type onCompleteCb = (response: PlaceSearchWithRatesResponse) => void
-
-export type RateParameters = {
-  /** Check in date in format: `yyyy-mm-dd` */
-  checkIn: string
-  /** Check out date in format: `yyyy-mm-dd` */
-  checkOut: string
-  /** Room string in format: `room|occupancy` */
-  rooms: string
+interface HotelWithRates extends Hotel {
+  rates?: Rate
 }
 
-export type PlaceSearchWithRatesParameters = PlaceSearchParameters &
-  RateParameters
-
-type HitWithRates = Hit & {
-  rates?: Rates
+interface SearchMeta {
+  searchId: string
+  hotelsHaveStaticPosition: boolean
 }
 
-export type PlaceSearchWithRatesResults = PlaceSearchResults & {
-  hits: HitWithRates[]
+interface ResultsWithRates {
+  anchor: Anchor
+  anchorHotel?: Hotel
+  meta: SearchMeta
+  results?: GeoSearchResults
+  rates?: RatesResponse
 }
 
-export type PlaceSearchWithRatesResponse = {
-  place: PlaceMeta
-  rates: Rates[]
-  results: PlaceSearchWithRatesResults
+interface Options {
+  anonymousId: AnonymousId
+  language: string
+  currency: string
+  userCountry: string
+  requestSize: number
+}
+
+interface HotelsWithRates {
+  anchorHotel?: HotelWithRates
+  hits?: HotelWithRates[]
+}
+
+interface SearchCallbacks {
+  onStart?: OnStart
+  onHotelsReceived?: OnHotelsReceived
+  onRatesReceived?: OnRatesReceived
+  onComplete?: OnComplete
 }
 
 export type Search = (
-  parameters: PlaceSearchWithRatesParameters,
-  onHotelsCb?: OnHotelsCb,
-  onRatesCb?: OnRatesCb,
-  onCompleteCb?: onCompleteCb
-) => Promise<PlaceSearchWithRatesResponse>
+  parameters: ApiSearchParameters,
+  callbacks?: SearchCallbacks
+) => Promise<{
+  loadRates: (objectID: string) => Promise<Rate | undefined>
+  loadMore: () => Promise<ResultsWithRates>
+  getResultsWithRates: () => HotelsWithRates
+}>
 
-const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
-  const hitRates = rates.find((rate) => rate.id === hit.objectID)
+const DEFAULT_ROOMS = '2'
+const DEFAULT_DEVICE_CATEGORY = 'desktop'
+
+const augmentHitWithRates = (hit: Hotel, rates?: Rate[]): HotelWithRates => {
+  const hitRates = rates?.find((rate) => rate.id === hit.objectID)
 
   return {
     ...hit,
@@ -61,113 +95,295 @@ const augmentHitWithRates = (hit: Hit, rates: Rates[]): HitWithRates => {
   }
 }
 
-const generateDestinationString = (hits: Hit[]): string =>
-  hits.map((hit) => hit.objectID).join(',')
+const getHsoConfigType = (anchorType: AnchorType): HsoConfigType => {
+  switch (anchorType) {
+    case 'hotel': {
+      return 'hotel_search'
+    }
 
-export const search = (base: Base): Search => async (
-  parameters,
-  onHotelsCb,
-  onRatesCb,
-  onCompleteCb
-) => {
-  const {
-    algoliaClient,
-    raaClient,
-    options,
-    configs: {hso}
-  } = base
-  const {
-    checkIn,
-    checkOut,
-    rooms,
-    ...placeSearchParameters
-  }: PlaceSearchWithRatesParameters = parameters
-  const {anonymousId, language, currency, country} = options
+    case 'place': {
+      return 'place_search'
+    }
 
-  const searchConfig = getFilterFromConfig(
-    hso,
-    'place_search',
-    placeSearchParameters
-  )
+    default:
+      return undefined
+  }
+}
 
-  const placeSearchResults = await placeSearch(algoliaClient, options)(
-    placeSearchParameters,
-    searchConfig
-  )
-
-  if (typeof onHotelsCb === 'function') {
-    onHotelsCb(placeSearchResults)
+const getHsoFilter = (
+  hso: HsoConfig[],
+  searchParameters: SearchParameters,
+  anchorObject: AnchorObject
+): HsoFilter => {
+  const {anchorType, anchorHotel} = anchorObject
+  const {checkIn, checkOut} = searchParameters
+  const hsoConfigType = getHsoConfigType(anchorType)
+  const hsoConfigContext = {
+    anchorHotel,
+    searchParameters,
+    checkInNights: getCheckInNights(checkIn, checkOut)
   }
 
-  const rates = await raaClient.getRates(
-    {
-      destination: generateDestinationString(placeSearchResults.results?.hits),
-      checkIn,
-      checkOut,
-      rooms,
-      anonymousId,
-      language,
-      currency,
-      country
-    },
-    onRatesCb
-  )
+  return filterFromHsoConfig(hso, hsoConfigType, hsoConfigContext)
+}
 
-  const result = {
-    place: placeSearchResults.place,
-    rates: rates?.results,
-    results: {
-      ...placeSearchResults.results,
-      hits: placeSearchResults.results.hits.map((hit) =>
-        augmentHitWithRates(hit, rates?.results)
-      )
+const prepareGeoSearchParameters = (
+  anchor: Anchor,
+  parameters: SearchParameters,
+  offset: number,
+  anchorHotelId?: string
+): GeoSearchParameters => {
+  const geoSearchParameters = {
+    ...parameters,
+    offset,
+    anchorHotelId
+  }
+
+  if (geoSearchParameters.boundingBox?.length) {
+    return geoSearchParameters
+  }
+
+  const {polygon} = anchor as PlaceAnchor
+
+  if (polygon?.length) {
+    return {
+      ...geoSearchParameters,
+      polygon
     }
   }
 
-  if (typeof onCompleteCb === 'function') {
-    onCompleteCb(result)
+  if (anchor._geoloc) {
+    return {
+      ...geoSearchParameters,
+      geolocation: anchor._geoloc
+    }
   }
 
+  return geoSearchParameters
+}
+
+const prepareSearchParameters = (
+  parameters: ApiSearchParameters,
+  dates: DatesConfig
+): SearchParameters => {
+  const {
+    rooms = DEFAULT_ROOMS,
+    deviceCategory = DEFAULT_DEVICE_CATEGORY
+  } = parameters
+
+  const {checkIn, checkOut} = getCheckInCheckOutDates(parameters, dates)
+
   return {
-    getHits: () => placeSearchResults.results,
-    getRates: (hitId) => {
-      if (!hitId) {
-        return rates.results
-      }
+    ...parameters,
+    checkIn,
+    checkOut,
+    rooms,
+    deviceCategory
+  }
+}
 
-      const hitRates = rates.results.find((hitRates) => hitRates.id === hitId)
+const generateDestinationString = (hits?: Hotel[]) => {
+  return hits?.map((hit) => hit.objectID).join(',')
+}
 
-      return hitRates
-    },
-    loadRates: (hitId) => {
-      if (!hitId) {
-        throw new Error('Hit id must be provided')
-      }
+const hotelsHaveStaticPosition = (parameters: SearchParameters) => {
+  if (parameters.sortField === 'price') {
+    return false
+  }
 
-      const destination = hitId && hitId.toString()
+  if (
+    parameters.filters?.priceMin !== undefined ||
+    parameters.filters?.priceMax !== undefined
+  ) {
+    return false
+  }
 
-      return raaClient.getRates({
-        destination,
-        checkIn,
-        checkOut,
-        rooms,
-        anonymousId,
-        language,
-        currency,
-        country,
-        getAllOffers: true
+  return true
+}
+
+const getRequestSize = (
+  anchorObject: AnchorObject,
+  parameters: SearchParameters,
+  options: Options
+) => {
+  const {anchor, anchorType} = anchorObject
+
+  if (
+    anchor.pageSize !== undefined &&
+    anchor.pageSize >= options.requestSize &&
+    parameters.filters?.priceMin === undefined &&
+    parameters.filters?.priceMax === undefined &&
+    parameters.sortField !== 'price'
+  ) {
+    return anchor.pageSize
+  }
+
+  return anchorType === 'hotel' ? 45 : 65
+}
+
+export const search = (base: Base): Search => {
+  const {appConfig, algoliaClient, raaClient, options, configs} = base
+  const {hso, exchangeRates, dates} = configs
+  const {languages, currency} = options
+  const exchangeRate = exchangeRates[currency]
+
+  return async (parameters, callbacks = {}) => {
+    let loadMoreOffset = 0
+    const {onStart, onHotelsReceived, onRatesReceived, onComplete} = callbacks
+
+    /** 1 - Prepare search parameters and generate SearchId */
+    const searchParameters = prepareSearchParameters(parameters, dates)
+    const searchId = generateSearchId(parameters, options)
+    /** END */
+
+    if (typeof onStart === 'function') {
+      onStart({
+        searchParameters,
+        meta: {
+          searchId
+        }
       })
-    },
-    getHitsWithRates: () => {
-      return {
-        ...placeSearchResults.results,
-        hits: placeSearchResults.results.hits.map((hit) =>
-          augmentHitWithRates(hit, rates?.results)
+    }
+
+    /** 2 - Get Anchor + Anchor hotel */
+    const anchorObject = await getAnchor(
+      algoliaClient,
+      appConfig,
+      options
+    )(searchParameters)
+
+    const {anchor, anchorHotel} = anchorObject
+    /** END */
+
+    /** 3 - Initialize geolocation search func */
+    const geoSearchFn = geoSearch(algoliaClient, appConfig, {
+      languages,
+      exchangeRate,
+      priceBucketsCount: options.priceBucketsCount,
+      priceBucketWidth: anchor.priceBucketWidth,
+      requestSize: getRequestSize(anchorObject, searchParameters, options),
+      hsoFilter: getHsoFilter(hso, searchParameters, anchorObject)
+    })
+    /** END */
+
+    /** 4 - Search */
+    const run = async (offset = 0) => {
+      const output: Partial<ResultsWithRates> = {
+        anchor,
+        anchorHotel,
+        meta: {
+          searchId,
+          hotelsHaveStaticPosition: hotelsHaveStaticPosition(searchParameters)
+        }
+      }
+
+      /** 4.1 - Geolocation search */
+      if (searchParameters.skipGeoSearch !== true) {
+        output.results = await geoSearchFn(
+          prepareGeoSearchParameters(
+            anchor,
+            searchParameters,
+            offset,
+            anchorHotel?.objectID
+          )
         )
       }
-    },
-    loadMore: () => {
-      console.log('Load more reults')
+      /** END */
+
+      if (typeof onHotelsReceived === 'function') {
+        onHotelsReceived({...output})
+      }
+
+      /** 4.2 - Get rates */
+      if (searchParameters.rates) {
+        const ratesParameters = {
+          ...searchParameters,
+          searchId,
+          destination: generateDestinationString(output.results?.hits),
+          anchorDestination: anchorHotel?.objectID
+        }
+
+        const rates = await raaClient.getRates(
+          ratesParameters,
+          (response: RatesResponse) => {
+            if (typeof onRatesReceived === 'function') {
+              onRatesReceived(
+                augmentRaaResponse(response, {
+                  ...ratesParameters,
+                  ...anchor,
+                  ...options,
+                  exchangeRate
+                })
+              )
+            }
+          }
+        )
+
+        output.rates = augmentRaaResponse(rates, {
+          ...ratesParameters,
+          ...anchor,
+          ...options,
+          exchangeRate
+        })
+      }
+      /** END */
+
+      if (typeof onComplete === 'function') {
+        onComplete(output)
+      }
+
+      return output as ResultsWithRates
+    }
+
+    const searchResults = await run(searchParameters.offset)
+    /** END */
+
+    return {
+      loadRates: async (objectID) => {
+        if (!objectID) {
+          throw new Error('Hotel id must be provided')
+        }
+
+        const isAnchor = objectID === searchResults.anchorHotel?.objectID
+
+        const ratesParameters = {
+          ...searchParameters,
+          searchId,
+          getAllOffers: true,
+          destination: objectID,
+          anchorDestination: isAnchor ? objectID : undefined
+        }
+
+        const rates = await raaClient.getRates(ratesParameters)
+
+        if (isAnchor) {
+          return rates.anchorHotelRate
+        }
+
+        return rates.hotelsRates?.find(({id}: {id: string}) => id === objectID)
+      },
+      loadMore: async () => {
+        loadMoreOffset += getRequestSize(
+          anchorObject,
+          searchParameters,
+          options
+        )
+
+        return run(loadMoreOffset)
+      },
+      getResultsWithRates: () => {
+        return {
+          anchorHotel: searchResults.anchorHotel
+            ? {
+                ...searchResults.anchorHotel,
+                rates: searchResults.rates?.anchorHotelRate
+              }
+            : undefined,
+          hits: searchResults.results?.hits.map((hit: Hotel) =>
+            augmentHitWithRates(hit, searchResults.rates?.hotelsRates)
+          )
+        }
+      }
     }
   }
 }

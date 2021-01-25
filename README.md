@@ -21,7 +21,7 @@ const options = {
   anonymousId: 'fd9dbb5f-b337-4dd7-b640-1f177d1d3caa',
   language: 'en',
   currency: 'USD',
-  country: 'NL'
+  userCountry: 'NL'
 }
 
 const sapiClient = sapi(apiKey, options)
@@ -44,13 +44,13 @@ const searchParams = {
   ...filters
 }
 
-sapiClient.placeSearchWithRates(searchParams, onHotelsCb, onRatesCb)
+sapiClient.placeSearchWithRates(searchParams, onHotelsReceived, onRatesReceived)
 ```
 
 Besides the search params it receives optional callbacks:
 
-- `onHotelsCb` - static hotels from Algolia
-- `onRatesCb` - every time client receives a new batch of rates from RAA poling
+- `onHotelsReceived` - static hotels from Algolia
+- `onRatesReceived` - every time client receives a new batch of rates from RAA poling
 
 
 `placeSearchWithRates` is async method that returns Promise which resolves with the next response 
@@ -79,9 +79,9 @@ useSapiSearch(
   searchParams,
   options,
   onSearchStartCb,
-  onCompleteCb,
-  onHotelsCb,
-  onRatesCb
+  onComplete,
+  onHotelsReceived,
+  onRatesReceived
 )
 ```
 
