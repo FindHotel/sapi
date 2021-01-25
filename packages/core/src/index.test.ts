@@ -1,13 +1,27 @@
 import sapiClient from '.'
+import algoliasearch from 'algoliasearch'
 
-const getConfig = jest.fn()
-const search = jest.fn()
+import {configOutput, searchOutput} from './__mocks__/search'
 
-// FIXME: mock dynamic calls
+jest.mock('algoliasearch')
+
+algoliasearch.mockImplementation(() => ({
+  search: jest.fn().mockImplementation((args) => {
+    const firstArgIndex = args[0].indexName
+    if (firstArgIndex === 'prod_sapicfg_v1') {
+      return Promise.resolve(configOutput)
+    } if (firstArgIndex === 'prod_hotelranking_v1_pp000003_tags') {
+      return Promise.resolve(searchOutput)
+    }
+  }),
+  getConfig: jest.fn().mockResolvedValue(configOutput)
+}))
+
+const expectedSapiClient = {search: expect.any(Function), getConfig: expect.any(Function)}
+
+// FIXME: mock RAA calls
 describe('SapiClient', () => {
   describe('initialization', () => {
-    const initializedSapiClient = {search, getConfig}
-
     it('Initializes correctly when passed required arguments', () => {
       return expect(
         sapiClient('findhotel-website', 'efa703d5c0057a24487bc9bdcb597770', {
@@ -25,7 +39,7 @@ describe('SapiClient', () => {
             hso: 'pp000003-tags-b'
           }
         })
-      ).resolves.toMatchObject(initializedSapiClient)
+      ).resolves.toMatchObject(expectedSapiClient)
     })
 
     it('Initializes correctly when passed all arguments', () => {
@@ -49,7 +63,7 @@ describe('SapiClient', () => {
             hso: 'pp000003-tags-b'
           }
         })
-      ).resolves.toEqual(initializedSapiClient)
+      ).resolves.toMatchObject(expectedSapiClient)
     })
   })
 })
