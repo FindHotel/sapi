@@ -65,6 +65,15 @@ const getConfig = (base: Base) => (): Configs | undefined => {
   return base?.configs
 }
 
+/**
+ * Initializes SAPI client asynchronously, it first loads the app configuration from Algolia and sets up the client.
+ * 
+ * @param clientId SAPI client id
+ * @param clientKey SAPI public client key
+ * @param options options for initializing SAPI
+ * 
+ * @returns initialized SAPI client
+ */
 const sapiClient = async (
   clientId: string,
   clientKey: string,
