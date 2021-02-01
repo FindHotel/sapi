@@ -105,11 +105,11 @@ export const augmentRaaResponse = (
   ratesResults: RatesResponse,
   parameters: Parameters
 ): RatesResponse => {
-  const {hotelsRates, anchorHotelRate} = ratesResults
+  const {hotels, anchorHotel} = ratesResults
   let augmentedHotelsRates
 
-  if (hotelsRates) {
-    augmentedHotelsRates = hotelsRates.map((rate) =>
+  if (hotels) {
+    augmentedHotelsRates = hotels.map((rate) =>
       applyPriceFilter(parameters, rate)
     )
 
@@ -122,7 +122,7 @@ export const augmentRaaResponse = (
   }
 
   return {
-    hotelsRates: augmentedHotelsRates,
-    anchorHotelRate
+    hotels: augmentedHotelsRates,
+    anchorHotel
   }
 }

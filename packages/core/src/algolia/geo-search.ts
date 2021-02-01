@@ -74,20 +74,13 @@ interface FiltersParameters {
   noHostels?: boolean
 }
 
-interface FacetFiltersParameters {
-  facilities?: number[]
-  starRating?: number[]
-  propertyTypeId?: number[]
-  themeIds?: number[]
-}
-
 export interface GeoSearchParameters extends OptionalSearchParameters {
   geolocation?: Location
   anchorHotelId?: string
 }
 
 export interface GeoSearchResults {
-  facets: Facets
+  facets: Record<string, Facets>
   length: number
   nbHits: number
   offset: number

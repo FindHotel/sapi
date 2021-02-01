@@ -60,6 +60,7 @@ interface Options {
   currency: string
   userCountry: string
   requestSize: number
+  pageSize: number
 }
 
 interface HotelsWithRates {
@@ -186,7 +187,11 @@ const generateDestinationString = (hits?: Hotel[]) => {
   return hits?.map((hit) => hit.objectID).join(',')
 }
 
-const hotelsHaveStaticPosition = (parameters: SearchParameters) => {
+const hotelsHaveStaticPosition = (
+  parameters: SearchParameters,
+  {pageSize}: {pageSize: number},
+  results?: GeoSearchResults
+) => {
   if (parameters.sortField === 'price') {
     return false
   }
@@ -196,6 +201,17 @@ const hotelsHaveStaticPosition = (parameters: SearchParameters) => {
     parameters.filters?.priceMax !== undefined
   ) {
     return false
+  }
+
+  if (results) {
+    const checkInNights = getCheckInNights(
+      parameters.checkIn,
+      parameters.checkOut
+    )
+
+    const availabilityCount = results.facets?.tags?.[`a${checkInNights}`] ?? 0
+
+    return availabilityCount >= pageSize
   }
 
   return true
@@ -251,8 +267,6 @@ export const search = (base: Base): Search => {
       appConfig,
       options
     )(searchParameters)
-
-    const {anchor, anchorHotel} = anchorObject
     /** END */
 
     /** 3 - Initialize geolocation search func */
@@ -260,7 +274,7 @@ export const search = (base: Base): Search => {
       languages,
       exchangeRate,
       priceBucketsCount: options.priceBucketsCount,
-      priceBucketWidth: anchor.priceBucketWidth,
+      priceBucketWidth: anchorObject.anchor.priceBucketWidth,
       requestSize: getRequestSize(anchorObject, searchParameters, options),
       hsoFilter: getHsoFilter(hso, searchParameters, anchorObject)
     })
@@ -269,11 +283,14 @@ export const search = (base: Base): Search => {
     /** 4 - Search */
     const run = async (offset = 0) => {
       const output: Partial<ResultsWithRates> = {
-        anchor,
-        anchorHotel,
+        anchor: anchorObject.anchor,
+        anchorHotel: anchorObject.anchorHotel,
         meta: {
           searchId,
-          hotelsHaveStaticPosition: hotelsHaveStaticPosition(searchParameters)
+          hotelsHaveStaticPosition: hotelsHaveStaticPosition(
+            searchParameters,
+            options
+          )
         }
       }
 
@@ -281,17 +298,27 @@ export const search = (base: Base): Search => {
       if (searchParameters.skipGeoSearch !== true) {
         output.results = await geoSearchFn(
           prepareGeoSearchParameters(
-            anchor,
+            anchorObject.anchor,
             searchParameters,
             offset,
-            anchorHotel?.objectID
+            anchorObject.anchorHotel?.objectID
           )
         )
       }
       /** END */
 
       if (typeof onHotelsReceived === 'function') {
-        onHotelsReceived({...output})
+        onHotelsReceived({
+          ...output,
+          meta: {
+            ...output.meta,
+            hotelsHaveStaticPosition: hotelsHaveStaticPosition(
+              searchParameters,
+              options,
+              output.results
+            )
+          }
+        })
       }
 
       /** 4.2 - Get rates */
@@ -300,7 +327,7 @@ export const search = (base: Base): Search => {
           ...searchParameters,
           searchId,
           destination: generateDestinationString(output.results?.hits),
-          anchorDestination: anchorHotel?.objectID
+          anchorDestination: anchorObject.anchorHotel?.objectID
         }
 
         const rates = await raaClient.getRates(
@@ -310,7 +337,7 @@ export const search = (base: Base): Search => {
               onRatesReceived(
                 augmentRaaResponse(response, {
                   ...ratesParameters,
-                  ...anchor,
+                  ...anchorObject.anchor,
                   ...options,
                   exchangeRate
                 })
@@ -321,7 +348,7 @@ export const search = (base: Base): Search => {
 
         output.rates = augmentRaaResponse(rates, {
           ...ratesParameters,
-          ...anchor,
+          ...anchorObject.anchor,
           ...options,
           exchangeRate
         })
@@ -357,10 +384,10 @@ export const search = (base: Base): Search => {
         const rates = await raaClient.getRates(ratesParameters)
 
         if (isAnchor) {
-          return rates.anchorHotelRate
+          return rates.anchorHotel
         }
 
-        return rates.hotelsRates?.find(({id}: {id: string}) => id === objectID)
+        return rates.hotels?.find(({id}: {id: string}) => id === objectID)
       },
       loadMore: async () => {
         loadMoreOffset += getRequestSize(
@@ -376,11 +403,11 @@ export const search = (base: Base): Search => {
           anchorHotel: searchResults.anchorHotel
             ? {
                 ...searchResults.anchorHotel,
-                rates: searchResults.rates?.anchorHotelRate
+                rates: searchResults.rates?.anchorHotel
               }
             : undefined,
           hits: searchResults.results?.hits.map((hit: Hotel) =>
-            augmentHitWithRates(hit, searchResults.rates?.hotelsRates)
+            augmentHitWithRates(hit, searchResults.rates?.hotels)
           )
         }
       }

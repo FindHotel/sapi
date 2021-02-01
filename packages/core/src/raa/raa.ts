@@ -41,8 +41,8 @@ export interface GetRatesParameters {
 }
 
 export interface RatesResponse {
-  anchorHotelRate?: Rate
-  hotelsRates?: Rate[]
+  anchorHotel?: Rate
+  hotels?: Rate[]
 }
 
 export type OnRatesReceived = (rates: RatesResponse) => void
@@ -211,14 +211,14 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
 
             requests.current = undefined
           } else {
-            const anchorHotelRate = response.results.find(
+            const anchorHotel = response.results.find(
               ({id}) => id === parameters.anchorDestination
             )
 
-            if (anchorHotelRate) {
-              result.anchorHotelRate = omit(['errors'], anchorHotelRate)
+            if (anchorHotel) {
+              result.anchorHotel = omit(['errors'], anchorHotel)
             } else {
-              result.hotelsRates = response.results?.map((result) =>
+              result.hotels = response.results?.map((result) =>
                 omit(['errors'], result)
               )
             }

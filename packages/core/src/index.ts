@@ -91,6 +91,7 @@ const sapi = async (
 
   const options = {
     ...clientOptions,
+    pageSize: clientOptions.pageSize ?? 20,
     currency: clientOptions.currency?.toUpperCase() ?? 'USD'
   }
 
