@@ -75,6 +75,15 @@ interface SearchCallbacks {
   onComplete?: OnComplete
 }
 
+/**
+ * Variable type Search function, supporting different types of searches based on the
+ * ApiSearchParameters passed in. Supports:
+ * * Hotel Searches with rates
+ * * Geolocation Searches with rates
+ * * Loading of rates for specific hotel
+ * * Load more / pagination functionality
+ * 
+ */
 export type Search = (
   parameters: ApiSearchParameters,
   callbacks?: SearchCallbacks
@@ -237,6 +246,14 @@ const getRequestSize = (
   return anchorType === 'hotel' ? 45 : 65
 }
 
+/**
+ * Search constructor, initializes SAPI and returns asynchronous 
+ * function that performs the actual searches, the type depending on the parameters passed.
+ * 
+ * @param base config object
+ * 
+ * @returns asynchronous search function, see [[Search]]
+ */
 export const search = (base: Base): Search => {
   const {appConfig, algoliaClient, raaClient, options, configs} = base
   const {hso, exchangeRates, dates} = configs

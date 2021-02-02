@@ -16,5 +16,8 @@
 /.vscode
 /packages/*/.vscode
 
+# generated assets
+coverage-ts
+
 # playground
 /packages/playground/public/bundle.*

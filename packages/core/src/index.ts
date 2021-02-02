@@ -53,9 +53,13 @@ export interface SapiClientOptions {
 }
 
 export interface Base {
+  /** Application configuration, stored in Algolia */
   appConfig: AppConfig
+  /** Instance of the Algolia Client */
   algoliaClient: AlgoliaClient
+  /** Instance of the Rates and Availability Client */
   raaClient: RaaClient
+  /** Configs loaded from Algolia and local date configuration */
   configs: Configs & {
     dates: DatesConfig
   }
@@ -76,6 +80,15 @@ const getConfig = (base: Base) => (): {
   }
 }
 
+/**
+ * Initializes SAPI client asynchronously, it first loads the app configuration from Algolia and sets up the client.
+ * 
+ * @param clientId SAPI client id
+ * @param clientKey SAPI public client key
+ * @param clientOptions options for initializing SAPI
+ * 
+ * @returns initialized SAPI client
+ */
 const sapi = async (
   clientId: string,
   clientKey: string,
@@ -113,7 +126,7 @@ const sapi = async (
     raaClient,
     configs: {
       ...configs,
-      dates: appConfig.getDatesConfig() // Move to options?
+      dates: appConfig.getDatesConfig()
     },
     options: {
       ...options,

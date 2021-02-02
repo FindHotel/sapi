@@ -2,6 +2,8 @@ import {omit} from '../utils'
 import differenceInDays from 'date-fns/differenceInDays'
 import format from 'date-fns/format'
 
+import {dateToMiddayUTC} from '../dates'
+
 import {GeoSearchResults} from './geo-search'
 
 import {
@@ -22,12 +24,14 @@ type AnchorHitOrHit = AnchorHit | Hit
 type TranslatedAttribute = TranslatedString | TranslatedArray
 
 /**
- * Formated CheckIn + length of stay
+ * Format checkIn + length of stay
+ * 
  * @returns a string `YYMMDD-lengthOfStay`
  */
 export const getCheckInNights = (checkIn: string, checkOut: string) => {
-  const checkInDate = new Date(checkIn)
-  const checkOutDate = new Date(checkOut)
+  const checkInDate = dateToMiddayUTC(checkIn)
+  const checkOutDate = dateToMiddayUTC(checkOut)
+  
   const checkInFormatted = format(checkInDate, 'yyMMdd')
   const nights = differenceInDays(checkOutDate, checkInDate)
 
@@ -36,6 +40,8 @@ export const getCheckInNights = (checkIn: string, checkOut: string) => {
 
 /**
  * Create tags' facet filter
+ * 
+ * Array with single tags definition.
  */
 export const getTagsFilter = (checkIn: string, checkOut: string) => {
   const checkInNights = getCheckInNights(checkIn, checkOut)
@@ -43,10 +49,25 @@ export const getTagsFilter = (checkIn: string, checkOut: string) => {
   return [`tags:-u${checkInNights}`]
 }
 
-const isNotEmptyOrWhiteSpace = (string: string | undefined) => {
+// REVIEW: Move to generic utils?
+/**
+ * Returns whether input string is empty or consists of only whitespace
+ * 
+ * @param string 
+ */
+export const isNotEmptyOrWhiteSpace = (string: string | undefined) => {
   return Boolean(string && string?.trim() !== '')
 }
 
+/**
+ * Creates an array with keys to get translated attributes for each supplied language.
+ * 
+ * @param languages array of languages for which to retreive attributes 
+ * @param attributes array of attributes to fetch translations for
+ * 
+ * @returns array with keys to get translated attributes. Example:
+ * ['fooAttr.en', 'fooAttr.nl']
+ */
 export const getTranslatedAttributes = (
   languages: Language[],
   attributes: string[]
@@ -64,6 +85,7 @@ export const getTranslatedAttributes = (
   return output
 }
 
+// REVIEW: we should rename this, it is doing more than casting
 const toString = (attr: TranslatedString, languages: Language[]) => {
   for (const lang of languages) {
     if (isNotEmptyOrWhiteSpace(attr?.[lang])) return attr[lang]
