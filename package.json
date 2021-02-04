@@ -16,6 +16,7 @@
     "test": "lerna run test",
     "test:watch": "lerna run test:watch",
     "__prepare": "npm run build",
+    "prepare": "npm run clean:dist && rollup -c",
     "rollup": "rollup -c",
     "rollup:watch": "npm run clean:dist && rollup -c --watch",
     "typedoc": "lerna run typedoc",

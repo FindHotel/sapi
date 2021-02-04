@@ -309,10 +309,12 @@ export function search(base: Base): Search {
 
       /** 4.2 - Get offers */
       if (searchParameters.offers) {
+        const hotelIds = searchResults.get('hotelIds')
+
         const getOffersParameters = {
           ...searchParameters,
           searchId,
-          destination: generateDestinationString(searchResults.get('hotelIds')),
+          destination: hotelIds ? generateDestinationString(hotelIds) : '',
           anchorDestination: anchorObject.anchorHotel?.objectID
         }
 
