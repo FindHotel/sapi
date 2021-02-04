@@ -1,10 +1,7 @@
 import {omit} from '../utils'
 import differenceInDays from 'date-fns/differenceInDays'
 import format from 'date-fns/format'
-
 import {dateToMiddayUTC} from '../dates'
-
-import {GeoSearchResults} from './geo-search'
 
 import {
   AnchorHit,
@@ -25,13 +22,13 @@ type TranslatedAttribute = TranslatedString | TranslatedArray
 
 /**
  * Format checkIn + length of stay
- * 
+ *
  * @returns a string `YYMMDD-lengthOfStay`
  */
-export const getCheckInNights = (checkIn: string, checkOut: string) => {
+export function getCheckInNights(checkIn: string, checkOut: string) {
   const checkInDate = dateToMiddayUTC(checkIn)
   const checkOutDate = dateToMiddayUTC(checkOut)
-  
+
   const checkInFormatted = format(checkInDate, 'yyMMdd')
   const nights = differenceInDays(checkOutDate, checkInDate)
 
@@ -40,10 +37,10 @@ export const getCheckInNights = (checkIn: string, checkOut: string) => {
 
 /**
  * Create tags' facet filter
- * 
+ *
  * Array with single tags definition.
  */
-export const getTagsFilter = (checkIn: string, checkOut: string) => {
+export function getTagsFilter(checkIn: string, checkOut: string) {
   const checkInNights = getCheckInNights(checkIn, checkOut)
 
   return [`tags:-u${checkInNights}`]
@@ -52,26 +49,26 @@ export const getTagsFilter = (checkIn: string, checkOut: string) => {
 // REVIEW: Move to generic utils?
 /**
  * Returns whether input string is empty or consists of only whitespace
- * 
- * @param string 
+ *
+ * @param string
  */
-export const isNotEmptyOrWhiteSpace = (string: string | undefined) => {
+export function isNotEmptyOrWhiteSpace(string: string | undefined) {
   return Boolean(string && string?.trim() !== '')
 }
 
 /**
  * Creates an array with keys to get translated attributes for each supplied language.
- * 
- * @param languages array of languages for which to retreive attributes 
+ *
+ * @param languages array of languages for which to retreive attributes
  * @param attributes array of attributes to fetch translations for
- * 
+ *
  * @returns array with keys to get translated attributes. Example:
  * ['fooAttr.en', 'fooAttr.nl']
  */
-export const getTranslatedAttributes = (
+export function getTranslatedAttributes(
   languages: Language[],
   attributes: string[]
-): string[] => {
+): string[] {
   const output: string[] = []
 
   languages.forEach((language) => {
@@ -86,7 +83,7 @@ export const getTranslatedAttributes = (
 }
 
 // REVIEW: we should rename this, it is doing more than casting
-const toString = (attr: TranslatedString, languages: Language[]) => {
+function toString(attr: TranslatedString, languages: Language[]) {
   for (const lang of languages) {
     if (isNotEmptyOrWhiteSpace(attr?.[lang])) return attr[lang]
   }
@@ -94,11 +91,11 @@ const toString = (attr: TranslatedString, languages: Language[]) => {
   return ''
 }
 
-const translatedArrayToString = (
+function translatedArrayToString(
   attr: TranslatedArray,
   languages: Language[],
   separator: string | undefined = ', ' // Can be overwritten based on localisation logic
-): string => {
+): string {
   const out: TranslatedString = {}
 
   languages.forEach((lang) => {
@@ -122,11 +119,11 @@ const translatedArrayToString = (
   return toString(out, languages)
 }
 
-const attributeWithFallback = (
+function attributeWithFallback(
   attr: TranslatedAttribute,
   language: string,
   languages: string[]
-): string[] => {
+): string[] {
   let result = attr[language]
 
   if (!result) {
@@ -144,11 +141,11 @@ const attributeWithFallback = (
   return typeof result === 'string' ? [result] : result
 }
 
-const mergeTranslatedAttributes = (
+function mergeTranslatedAttributes(
   a: TranslatedAttribute,
   b: TranslatedAttribute,
   languages: Language[]
-): string => {
+): string {
   const output: TranslatedArray = {}
 
   for (const language of languages) {
@@ -161,10 +158,12 @@ const mergeTranslatedAttributes = (
   return translatedArrayToString(output, languages)
 }
 
-const validateHit = (
-  hit: AnchorHitOrHit,
-  requiredAttributes: Record<string, unknown>
-): AnchorHitOrHit => {
+function validateHit(
+  hit: AnchorHitOrHit | undefined,
+  requiredAttributes: Record<string, any>
+): AnchorHitOrHit {
+  if (hit === undefined) return requiredAttributes as AnchorHitOrHit
+
   try {
     for (const key in requiredAttributes) {
       if (hit[key as keyof AnchorHitOrHit] === undefined) {
@@ -182,7 +181,7 @@ const validateHit = (
   }
 }
 
-export const hitToHotel = (algoliaHit: Hit, languages: Language[]): Hotel => {
+export function hitToHotel(algoliaHit: Hit, languages: Language[]): Hotel {
   const hit = validateHit(algoliaHit, {
     address: {},
     placeADName: {},
@@ -204,10 +203,10 @@ export const hitToHotel = (algoliaHit: Hit, languages: Language[]): Hotel => {
   return omit(['address', 'placeDN', 'placeADName'], hotel)
 }
 
-export const hitToHotelTypeAnchor = (
+export function hitToHotelTypeAnchor(
   anchorHit: HotelAnchorHit,
   languages: Language[]
-): HotelAnchor => {
+): HotelAnchor {
   const hit = validateHit(anchorHit, {
     hotelName: {},
     placeDN: {}
@@ -222,10 +221,10 @@ export const hitToHotelTypeAnchor = (
   return omit(['placeADN', 'placeDN'], anchor)
 }
 
-export const hitToPlaceTypeAnchor = (
+export function hitToPlaceTypeAnchor(
   anchorHit: PlaceAnchorHit,
   languages: Language[]
-): PlaceAnchor => {
+): PlaceAnchor {
   const hit = validateHit(anchorHit, {
     placeDN: {}
   }) as PlaceAnchorHit
@@ -236,16 +235,4 @@ export const hitToPlaceTypeAnchor = (
   }
 
   return omit(['placeName', 'placeADN', 'placeDN'], anchor)
-}
-
-export const geoResponseToResults = (results: GeoSearchResults) => {
-  const {facets, hits, length, nbHits, offset} = results
-
-  return {
-    facets,
-    hits,
-    length,
-    nbHits,
-    offset
-  }
 }

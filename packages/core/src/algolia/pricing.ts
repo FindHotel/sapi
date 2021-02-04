@@ -16,9 +16,14 @@ interface PriceFilterParameters {
 const PRICE_SORT_WEIGHT = 100
 const PRICE_FILTER_WEIGHT = 10000
 
-export const generateSortByPriceFilter = (
-  priceBucketsCount: number
-): string[] => {
+/**
+ * Generates sort by price optional filter
+ *
+ * @param priceBucketsCount number of price buckets
+ *
+ * @returns array of strings
+ */
+export function generateSortByPriceFilter(priceBucketsCount: number) {
   const filters = []
 
   for (let i = priceBucketsCount; i > 0; --i) {
@@ -29,7 +34,13 @@ export const generateSortByPriceFilter = (
   return filters
 }
 
-const getPriceBucketName = (checkIn?: string, checkOut?: string): string => {
+/**
+ * Gets price bucket name based on the days of the week for check In/Out dates
+ *
+ * @param checkIn checkIn date string
+ * @param checkOut  checkOut date string
+ */
+function getPriceBucketName(checkIn?: string, checkOut?: string) {
   if (!checkIn || !checkOut) {
     return 'pricing.medianRateBkt'
   }
@@ -49,7 +60,14 @@ const getPriceBucketName = (checkIn?: string, checkOut?: string): string => {
   return 'pricing.medianRateBkt'
 }
 
-export const generatePriceFilter = ({
+/**
+ * Generates price filter based on Alglolia's optional filters
+ *
+ * @param PriceFilterParameters parameterd for generating the filter
+ *
+ * @returns array of strings
+ */
+export function generatePriceFilter({
   priceMin,
   priceMax,
   priceBucketWidth,
@@ -57,7 +75,7 @@ export const generatePriceFilter = ({
   checkIn,
   checkOut,
   margin = 2
-}: PriceFilterParameters): string[] => {
+}: PriceFilterParameters) {
   const priceFilter: string[] = []
 
   if (priceMin === undefined && priceMax === undefined) {

@@ -13,20 +13,16 @@ interface GetDatesParameters {
   nights?: number
 }
 
-interface CheckInCheckOutDates {
-  checkIn: string
-  checkOut: string
-}
-
 const DATE_FORMAT = 'yyyy-MM-dd'
 
-export const dateToMiddayUTC = (date: string): Date =>
-  parseISO(`${date} 12:00:00`)
+export function dateToMiddayUTC(date: string) {
+  return parseISO(`${date} 12:00:00`)
+}
 
-const getNonBlockedDefaultCheckInDate = ({
+function getNonBlockedDefaultCheckInDate({
   daysFromNow,
   blockedDefaultDates
-}: DatesConfig): Date => {
+}: DatesConfig) {
   const todayUTC = dateToMiddayUTC(format(new Date(), DATE_FORMAT))
   let checkIn = lastDayOfISOWeek(addDays(todayUTC, daysFromNow))
 
@@ -40,10 +36,10 @@ const getNonBlockedDefaultCheckInDate = ({
   return checkIn
 }
 
-export const getCheckInCheckOutDates = (
+export function getCheckInCheckOutDates(
   parameters: GetDatesParameters,
   datesConfig: DatesConfig
-): CheckInCheckOutDates => {
+) {
   const {checkIn, checkOut, dayDistance, nights = 1} = parameters
   const todayUTC = dateToMiddayUTC(format(new Date(), DATE_FORMAT))
 

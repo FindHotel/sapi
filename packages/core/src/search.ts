@@ -1,16 +1,12 @@
+import {Except} from 'type-fest'
+
 import {Base} from '.'
 
-import {OnRatesReceived, RatesResponse, augmentRaaResponse} from './raa'
+import {OffersResponse, augmentRaaResponse} from './raa'
 
-import {
-  filterFromHsoConfig,
-  HsoConfigType,
-  HsoConfig,
-  HsoFilter,
-  DatesConfig
-} from './configs'
+import {filterFromHsoConfig, HsoConfig, DatesConfig} from './configs'
 
-import {generateSearchId} from './utils'
+import {generateSearchId, createState} from './utils'
 import {getCheckInCheckOutDates} from './dates'
 
 import {
@@ -18,9 +14,9 @@ import {
   geoSearch,
   getCheckInNights,
   GeoSearchParameters,
-  GeoSearchResults,
   AnchorObject,
-  AnchorType
+  AnchorType,
+  Facets
 } from './algolia'
 
 import {
@@ -28,31 +24,39 @@ import {
   PlaceAnchor,
   ApiSearchParameters,
   Hotel,
-  Rate,
+  HotelOfferEntity,
   AnonymousId,
   SearchParameters
 } from './types'
 
-type OnStart = (response: Record<string, unknown>) => void
-type OnHotelsReceived = (response: Record<string, unknown>) => void
-type OnComplete = (response: Record<string, unknown>) => void
-
-interface HotelWithRates extends Hotel {
-  rates?: Rate
-}
-
-interface SearchMeta {
+interface SearchResults {
+  hotelEntities: Record<string, Hotel>
+  hotelOfferEntities: Record<string, HotelOfferEntity>
+  hotelIds: string[]
+  searchParameters: SearchParameters
   searchId: string
   hotelsHaveStaticPosition: boolean
+  anchor: Anchor
+  anchorType: AnchorType
+  anchorHotel?: Hotel
+  anchorHotelOffer?: HotelOfferEntity
+  facets: Facets
+  resultsCount: number
+  resultsCountTotal: number
+  offset: number
 }
 
-interface ResultsWithRates {
-  anchor: Anchor
-  anchorHotel?: Hotel
-  meta: SearchMeta
-  results?: GeoSearchResults
-  rates?: RatesResponse
-}
+type OnStart = (
+  response: Pick<SearchResults, 'searchId' | 'searchParameters'>
+) => void
+
+type OnHotelsReceived = (
+  response: Except<SearchResults, 'hotelOfferEntities' | 'anchorHotelOffer'>
+) => void
+
+type OnOffersReceived = (response: SearchResults) => void
+
+type OnComplete = (response: SearchResults) => void
 
 interface Options {
   anonymousId: AnonymousId
@@ -63,49 +67,23 @@ interface Options {
   pageSize: number
 }
 
-interface HotelsWithRates {
-  anchorHotel?: HotelWithRates
-  hits?: HotelWithRates[]
-}
-
-interface SearchCallbacks {
-  onStart?: OnStart
-  onHotelsReceived?: OnHotelsReceived
-  onRatesReceived?: OnRatesReceived
-  onComplete?: OnComplete
-}
-
-/**
- * Variable type Search function, supporting different types of searches based on the
- * ApiSearchParameters passed in. Supports:
- * * Hotel Searches with rates
- * * Geolocation Searches with rates
- * * Loading of rates for specific hotel
- * * Load more / pagination functionality
- * 
- */
 export type Search = (
   parameters: ApiSearchParameters,
-  callbacks?: SearchCallbacks
+  callbacks?: {
+    onStart?: OnStart
+    onHotelsReceived?: OnHotelsReceived
+    onOffersReceived?: OnOffersReceived
+    onComplete?: OnComplete
+  }
 ) => Promise<{
-  loadRates: (objectID: string) => Promise<Rate | undefined>
-  loadMore: () => Promise<ResultsWithRates>
-  getResultsWithRates: () => HotelsWithRates
+  loadOffers: (objectID: string) => Promise<HotelOfferEntity | undefined>
+  loadMore: () => Promise<SearchResults>
 }>
 
 const DEFAULT_ROOMS = '2'
 const DEFAULT_DEVICE_CATEGORY = 'desktop'
 
-const augmentHitWithRates = (hit: Hotel, rates?: Rate[]): HotelWithRates => {
-  const hitRates = rates?.find((rate) => rate.id === hit.objectID)
-
-  return {
-    ...hit,
-    rates: hitRates
-  }
-}
-
-const getHsoConfigType = (anchorType: AnchorType): HsoConfigType => {
+function getHsoConfigType(anchorType: AnchorType) {
   switch (anchorType) {
     case 'hotel': {
       return 'hotel_search'
@@ -120,11 +98,11 @@ const getHsoConfigType = (anchorType: AnchorType): HsoConfigType => {
   }
 }
 
-const getHsoFilter = (
+function getHsoFilter(
   hso: HsoConfig[],
   searchParameters: SearchParameters,
   anchorObject: AnchorObject
-): HsoFilter => {
+) {
   const {anchorType, anchorHotel} = anchorObject
   const {checkIn, checkOut} = searchParameters
   const hsoConfigType = getHsoConfigType(anchorType)
@@ -137,12 +115,12 @@ const getHsoFilter = (
   return filterFromHsoConfig(hso, hsoConfigType, hsoConfigContext)
 }
 
-const prepareGeoSearchParameters = (
+function prepareGeoSearchParameters(
   anchor: Anchor,
   parameters: SearchParameters,
   offset: number,
   anchorHotelId?: string
-): GeoSearchParameters => {
+): GeoSearchParameters {
   const geoSearchParameters = {
     ...parameters,
     offset,
@@ -172,10 +150,10 @@ const prepareGeoSearchParameters = (
   return geoSearchParameters
 }
 
-const prepareSearchParameters = (
+function prepareSearchParameters(
   parameters: ApiSearchParameters,
   dates: DatesConfig
-): SearchParameters => {
+): SearchParameters {
   const {
     rooms = DEFAULT_ROOMS,
     deviceCategory = DEFAULT_DEVICE_CATEGORY
@@ -192,15 +170,15 @@ const prepareSearchParameters = (
   }
 }
 
-const generateDestinationString = (hits?: Hotel[]) => {
-  return hits?.map((hit) => hit.objectID).join(',')
+function generateDestinationString(hotelIds: string[]) {
+  return hotelIds.join(',')
 }
 
-const hotelsHaveStaticPosition = (
+function hotelsHaveStaticPosition(
   parameters: SearchParameters,
-  {pageSize}: {pageSize: number},
-  results?: GeoSearchResults
-) => {
+  pageSize: number,
+  facets?: Facets
+) {
   if (parameters.sortField === 'price') {
     return false
   }
@@ -212,13 +190,13 @@ const hotelsHaveStaticPosition = (
     return false
   }
 
-  if (results) {
+  if (facets) {
     const checkInNights = getCheckInNights(
       parameters.checkIn,
       parameters.checkOut
     )
 
-    const availabilityCount = results.facets?.tags?.[`a${checkInNights}`] ?? 0
+    const availabilityCount = facets.tags?.[`a${checkInNights}`] ?? 0
 
     return availabilityCount >= pageSize
   }
@@ -226,11 +204,11 @@ const hotelsHaveStaticPosition = (
   return true
 }
 
-const getRequestSize = (
+function getRequestSize(
   anchorObject: AnchorObject,
   parameters: SearchParameters,
   options: Options
-) => {
+) {
   const {anchor, anchorType} = anchorObject
 
   if (
@@ -246,36 +224,29 @@ const getRequestSize = (
   return anchorType === 'hotel' ? 45 : 65
 }
 
-/**
- * Search constructor, initializes SAPI and returns asynchronous 
- * function that performs the actual searches, the type depending on the parameters passed.
- * 
- * @param base config object
- * 
- * @returns asynchronous search function, see [[Search]]
- */
-export const search = (base: Base): Search => {
+export function search(base: Base): Search {
   const {appConfig, algoliaClient, raaClient, options, configs} = base
   const {hso, exchangeRates, dates} = configs
   const {languages, currency} = options
   const exchangeRate = exchangeRates[currency]
 
   return async (parameters, callbacks = {}) => {
+    const searchResults = createState({} as SearchResults)
     let loadMoreOffset = 0
-    const {onStart, onHotelsReceived, onRatesReceived, onComplete} = callbacks
+    const {onStart, onHotelsReceived, onOffersReceived, onComplete} = callbacks
 
     /** 1 - Prepare search parameters and generate SearchId */
     const searchParameters = prepareSearchParameters(parameters, dates)
     const searchId = generateSearchId(parameters, options)
+
+    searchResults.update((state) => {
+      state.searchParameters = searchParameters
+      state.searchId = searchId
+    })
     /** END */
 
     if (typeof onStart === 'function') {
-      onStart({
-        searchParameters,
-        meta: {
-          searchId
-        }
-      })
+      onStart(searchResults.current())
     }
 
     /** 2 - Get Anchor + Anchor hotel */
@@ -284,6 +255,12 @@ export const search = (base: Base): Search => {
       appConfig,
       options
     )(searchParameters)
+
+    searchResults.update((state) => {
+      state.anchor = anchorObject.anchor
+      state.anchorType = anchorObject.anchorType
+      state.anchorHotel = anchorObject.anchorHotel
+    })
     /** END */
 
     /** 3 - Initialize geolocation search func */
@@ -299,21 +276,9 @@ export const search = (base: Base): Search => {
 
     /** 4 - Search */
     const run = async (offset = 0) => {
-      const output: Partial<ResultsWithRates> = {
-        anchor: anchorObject.anchor,
-        anchorHotel: anchorObject.anchorHotel,
-        meta: {
-          searchId,
-          hotelsHaveStaticPosition: hotelsHaveStaticPosition(
-            searchParameters,
-            options
-          )
-        }
-      }
-
       /** 4.1 - Geolocation search */
       if (searchParameters.skipGeoSearch !== true) {
-        output.results = await geoSearchFn(
+        const geoSearchResults = await geoSearchFn(
           prepareGeoSearchParameters(
             anchorObject.anchor,
             searchParameters,
@@ -321,76 +286,95 @@ export const search = (base: Base): Search => {
             anchorObject.anchorHotel?.objectID
           )
         )
+
+        searchResults.update((state) => {
+          state.facets = geoSearchResults.facets
+          state.resultsCount = geoSearchResults.resultsCount
+          state.resultsCountTotal = geoSearchResults.resultsCountTotal
+          state.offset = geoSearchResults.offset
+          state.hotelIds = geoSearchResults.hotelIds
+          state.hotelEntities = geoSearchResults.hotelEntities
+          state.hotelsHaveStaticPosition = hotelsHaveStaticPosition(
+            searchParameters,
+            options.pageSize,
+            geoSearchResults.facets
+          )
+        })
       }
       /** END */
 
       if (typeof onHotelsReceived === 'function') {
-        onHotelsReceived({
-          ...output,
-          meta: {
-            ...output.meta,
-            hotelsHaveStaticPosition: hotelsHaveStaticPosition(
-              searchParameters,
-              options,
-              output.results
-            )
-          }
-        })
+        onHotelsReceived(searchResults.current())
       }
 
-      /** 4.2 - Get rates */
-      if (searchParameters.rates) {
-        const ratesParameters = {
+      /** 4.2 - Get offers */
+      if (searchParameters.offers) {
+        const getOffersParameters = {
           ...searchParameters,
           searchId,
-          destination: generateDestinationString(output.results?.hits),
+          destination: generateDestinationString(searchResults.get('hotelIds')),
           anchorDestination: anchorObject.anchorHotel?.objectID
         }
 
-        const rates = await raaClient.getRates(
-          ratesParameters,
-          (response: RatesResponse) => {
-            if (typeof onRatesReceived === 'function') {
-              onRatesReceived(
-                augmentRaaResponse(response, {
-                  ...ratesParameters,
-                  ...anchorObject.anchor,
-                  ...options,
-                  exchangeRate
-                })
-              )
+        const offersResponse = await raaClient.getOffers(
+          getOffersParameters,
+          (response: OffersResponse) => {
+            const augmentedRaaResponse = augmentRaaResponse(response, {
+              ...getOffersParameters,
+              ...anchorObject.anchor,
+              ...options,
+              exchangeRate
+            })
+
+            searchResults.update((state) => {
+              state.hotelIds = augmentedRaaResponse.anchorHotelOffer
+                ? state.hotelIds
+                : augmentedRaaResponse.hotelIds
+
+              state.hotelOfferEntities = augmentedRaaResponse.hotelOfferEntities
+              state.anchorHotelOffer = augmentedRaaResponse.anchorHotelOffer
+            })
+
+            if (typeof onOffersReceived === 'function') {
+              onOffersReceived(searchResults.current())
             }
           }
         )
 
-        output.rates = augmentRaaResponse(rates, {
-          ...ratesParameters,
+        const augmentedRaaResponse = augmentRaaResponse(offersResponse, {
+          ...getOffersParameters,
           ...anchorObject.anchor,
           ...options,
           exchangeRate
+        })
+
+        searchResults.update((state) => {
+          state.hotelIds = augmentedRaaResponse.hotelIds
+          state.hotelOfferEntities = augmentedRaaResponse.hotelOfferEntities
+          state.anchorHotelOffer = augmentedRaaResponse.anchorHotelOffer
         })
       }
       /** END */
 
       if (typeof onComplete === 'function') {
-        onComplete(output)
+        onComplete(searchResults.current())
       }
 
-      return output as ResultsWithRates
+      return searchResults.current()
     }
 
-    const searchResults = await run(searchParameters.offset)
+    const results = await run(searchParameters.offset)
     /** END */
 
     return {
-      loadRates: async (objectID) => {
+      loadOffers: async (objectID) => {
         if (!objectID) {
           throw new Error('Hotel id must be provided')
         }
 
-        const isAnchor = objectID === searchResults.anchorHotel?.objectID
+        const isAnchor = objectID === results.anchorHotel?.objectID
 
-        const ratesParameters = {
+        const getOffersParameters = {
           ...searchParameters,
           searchId,
           getAllOffers: true,
@@ -398,13 +382,15 @@ export const search = (base: Base): Search => {
           anchorDestination: isAnchor ? objectID : undefined
         }
 
-        const rates = await raaClient.getRates(ratesParameters)
+        const offersResponse = await raaClient.getOffers(getOffersParameters)
 
         if (isAnchor) {
-          return rates.anchorHotel
+          return offersResponse.anchorHotel
         }
 
-        return rates.hotels?.find(({id}: {id: string}) => id === objectID)
+        return offersResponse.hotels?.find(
+          ({id}: {id: string}) => id === objectID
+        )
       },
       loadMore: async () => {
         loadMoreOffset += getRequestSize(
@@ -414,19 +400,6 @@ export const search = (base: Base): Search => {
         )
 
         return run(loadMoreOffset)
-      },
-      getResultsWithRates: () => {
-        return {
-          anchorHotel: searchResults.anchorHotel
-            ? {
-                ...searchResults.anchorHotel,
-                rates: searchResults.rates?.anchorHotel
-              }
-            : undefined,
-          hits: searchResults.results?.hits.map((hit: Hotel) =>
-            augmentHitWithRates(hit, searchResults.rates?.hotels)
-          )
-        }
       }
     }
   }

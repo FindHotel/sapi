@@ -1,12 +1,8 @@
 import {AlgoliaClient} from '..'
-import {
-  geoResponseToResults,
-  getTranslatedAttributes,
-  hitToHotel,
-  getTagsFilter
-} from './utils'
+import {getTranslatedAttributes, hitToHotel, getTagsFilter} from './utils'
 
 import {HsoFilter, IndexNameGetter} from '../configs'
+import {generateSortByPriceFilter, generatePriceFilter} from './pricing'
 
 import {
   OptionalSearchParameters,
@@ -16,8 +12,6 @@ import {
   BoundingBox,
   Polygon
 } from '../types'
-
-import {generateSortByPriceFilter, generatePriceFilter} from './pricing'
 
 const HOSTEL_PROPERTY_TYPE_ID = '5'
 const DEFAULT_RADIUS = 20000
@@ -32,11 +26,13 @@ interface Options {
   hsoFilter: HsoFilter
 }
 
-type OptionalFilters = string[]
+type OptionalFilters = string | string[] | Array<string[] | string>
 
-type FacetFilters = Array<string | string[]>
+type FacetFilters = string | string[] | string[][]
 
-type Facets = Record<string, number>
+type NumericFilters = string | string[] | string[][]
+
+export type Facets = Record<string, Record<string, number>>
 
 interface BuildOptionalFiltersParameters {
   sortField?: string
@@ -53,7 +49,7 @@ interface AlgoliaGeoSearchRequest {
   offset: number
   facets: string[]
   filters: string
-  numericFilters: string[]
+  numericFilters: NumericFilters
   facetFilters: FacetFilters
   attributesToRetrieve: string[]
   attributesToHighlight: string[]
@@ -79,20 +75,12 @@ export interface GeoSearchParameters extends OptionalSearchParameters {
   anchorHotelId?: string
 }
 
-export interface GeoSearchResults {
-  facets: Record<string, Facets>
-  length: number
-  nbHits: number
-  offset: number
-  hits: Hotel[]
-}
-
-const buildFacetFilters = ({
+function buildFacetFilters({
   anchorHotelId,
   checkIn,
   checkOut,
   filters = {}
-}: GeoSearchParameters): Array<string | string[]> => {
+}: GeoSearchParameters) {
   const {facilities, starRating, propertyTypeId, themeIds} = filters
 
   const facetFilters = []
@@ -133,12 +121,10 @@ const buildFacetFilters = ({
     facetFilters.push(getTagsFilter(checkIn, checkOut))
   }
 
-  return facetFilters
+  return facetFilters as FacetFilters
 }
 
-const buildNumericFilters = ({
-  guestRating
-}: NumericFiltersParameters): string[] => {
+function buildNumericFilters({guestRating}: NumericFiltersParameters) {
   if (guestRating?.length) {
     return [`guestRating.overall>=${guestRating[0]}`]
   }
@@ -146,7 +132,7 @@ const buildNumericFilters = ({
   return []
 }
 
-const buildFilters = ({noHostels}: FiltersParameters): string => {
+function buildFilters({noHostels}: FiltersParameters) {
   let filters = 'isDeleted = 0'
 
   if (noHostels) {
@@ -156,10 +142,10 @@ const buildFilters = ({noHostels}: FiltersParameters): string => {
   return filters
 }
 
-const buildOptionalFilters = (
+function buildOptionalFilters(
   parameters: BuildOptionalFiltersParameters,
   options: Options
-): OptionalFilters => {
+): OptionalFilters {
   const {filters = {}, checkIn, checkOut, sortField} = parameters
   const {priceMin, priceMax} = filters
   const {hsoFilter, priceBucketWidth, priceBucketsCount, exchangeRate} = options
@@ -188,7 +174,7 @@ const buildOptionalFilters = (
   return optionalFilters
 }
 
-const getHotelAttributesToRetrieve = (languages: string[]): string[] => {
+function getHotelAttributesToRetrieve(languages: string[]) {
   const translatedAttributes = getTranslatedAttributes(languages, [
     'hotelName',
     'placeADName',
@@ -229,55 +215,67 @@ const facets = [
   'tags'
 ]
 
-export const geoSearch = (
+export function geoSearch(
   {search}: AlgoliaClient,
   {getIndexName}: IndexNameGetter,
   options: Options
-) => async (parameters: GeoSearchParameters) => {
-  const {
-    boundingBox,
-    polygon,
-    geolocation,
-    length = options.requestSize,
-    offset = 0,
-    filters = {}
-  } = parameters
+) {
+  return async (parameters: GeoSearchParameters) => {
+    const {
+      boundingBox,
+      polygon,
+      geolocation,
+      length = options.requestSize,
+      offset = 0,
+      filters = {}
+    } = parameters
 
-  const searchRequest: AlgoliaGeoSearchRequest = {
-    length,
-    offset,
-    facets,
-    attributesToHighlight: [],
-    getRankingInfo: false,
-    filters: buildFilters(filters),
-    numericFilters: buildNumericFilters(filters),
-    facetFilters: buildFacetFilters(parameters),
-    attributesToRetrieve: getHotelAttributesToRetrieve(options.languages),
-    optionalFilters: buildOptionalFilters(parameters, options)
-  }
-
-  if (boundingBox) {
-    searchRequest.insideBoundingBox = [boundingBox]
-  } else if (polygon) {
-    searchRequest.insidePolygon = polygon
-  } else if (geolocation) {
-    searchRequest.aroundLatLng = `${geolocation.lat}, ${geolocation.lon}`
-    searchRequest.aroundRadius = geolocation.radius ?? DEFAULT_RADIUS
-    searchRequest.aroundPrecision = geolocation.precision ?? DEFAULT_PRECISION
-  }
-
-  const requests = [
-    {
-      indexName: getIndexName('hotel'),
-      params: searchRequest
+    const searchRequest: AlgoliaGeoSearchRequest = {
+      length,
+      offset,
+      facets,
+      attributesToHighlight: [],
+      getRankingInfo: false,
+      filters: buildFilters(filters),
+      numericFilters: buildNumericFilters(filters),
+      facetFilters: buildFacetFilters(parameters),
+      attributesToRetrieve: getHotelAttributesToRetrieve(options.languages),
+      optionalFilters: buildOptionalFilters(parameters, options)
     }
-  ]
 
-  const response = await search(requests)
-  const results = response.results?.[0]
+    if (boundingBox) {
+      searchRequest.insideBoundingBox = [boundingBox]
+    } else if (polygon) {
+      searchRequest.insidePolygon = polygon
+    } else if (geolocation) {
+      searchRequest.aroundLatLng = `${geolocation.lat}, ${geolocation.lon}`
+      searchRequest.aroundRadius = geolocation.radius ?? DEFAULT_RADIUS
+      searchRequest.aroundPrecision = geolocation.precision ?? DEFAULT_PRECISION
+    }
 
-  return geoResponseToResults({
-    ...results,
-    hits: results?.hits?.map((hit: Hit) => hitToHotel(hit, options.languages))
-  })
+    const response = await search<Hit>([
+      {
+        indexName: getIndexName('hotel'),
+        params: searchRequest
+      }
+    ])
+
+    const results = response.results[0]
+    const hotelIds = []
+    const hotelEntities: Record<string, Hotel> = {}
+
+    for (const hit of results.hits) {
+      hotelEntities[hit.objectID] = hitToHotel(hit, options.languages)
+      hotelIds.push(hit.objectID)
+    }
+
+    return {
+      hotelIds,
+      hotelEntities,
+      resultsCount: results.length ?? 0,
+      resultsCountTotal: results.nbHits ?? 0,
+      offset: results.offset ?? 0,
+      facets: results.facets ?? {}
+    }
+  }
 }

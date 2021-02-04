@@ -29,7 +29,7 @@ export interface OptionalSearchParameters {
   nights?: number
   sortField?: string
   sortOrder?: string
-  rates?: boolean
+  offers?: boolean
   filters?: FilterParameters
   offset?: number
   length?: number
@@ -218,7 +218,7 @@ export interface Offer {
   nightlyRate: number
 }
 
-export interface Rate {
+export interface RaaResponseOffer {
   anchorPriceRateBreakdown?: AnchorPriceRateBreakdown
   cheapestPriceRateBreakdown?: RateBreakdown
   fetchedAllOffers: boolean
@@ -226,11 +226,14 @@ export interface Rate {
   id: string
   offers: Offer[]
   topOfferData?: TopOfferData
+  errors: Array<Record<string, number | string>>
 }
+
+export interface HotelOfferEntity extends Omit<RaaResponseOffer, 'errors'> {}
 
 export interface RaaResponse {
   errors: any[]
-  results: Rate[]
+  results: RaaResponseOffer[]
   status: {
     complete: boolean
   }

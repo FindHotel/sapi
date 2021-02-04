@@ -1,6 +1,6 @@
-import {RatesResponse} from './raa'
+import {OffersResponse} from './raa'
 
-import {Rate, Offer} from '../types'
+import {HotelOfferEntity, Offer} from '../types'
 
 interface Parameters {
   sortField?: string
@@ -25,26 +25,24 @@ interface SortingBoostParameters {
   }
 }
 
-export const generateSortingBoost = (
-  parameters: SortingBoostParameters
-): string | undefined => {
+export function generateSortingBoost(parameters: SortingBoostParameters) {
   return parameters?.filters?.freeCancellation
     ? 'freeCancellation=true:100'
     : undefined
 }
 
-export const cheapestDisplayedRate = (rate: Rate) => {
-  if (rate.offers.length === 0) return 0
+export function cheapestDisplayedRate(hotelOfferEntity: HotelOfferEntity) {
+  if (hotelOfferEntity.offers.length === 0) return 0
 
-  return Math.min(...rate.offers.map((offer) => offer.nightlyRate))
+  return Math.min(...hotelOfferEntity.offers.map((offer) => offer.nightlyRate))
 }
 
-const isOfferInPriceRange = (
+function isOfferInPriceRange(
   offer: Offer,
   upperBound: number,
   priceMin: number,
   priceMax: number
-): boolean => {
+) {
   if (offer.nightlyRate < priceMin) {
     return false
   }
@@ -56,7 +54,10 @@ const isOfferInPriceRange = (
   return true
 }
 
-const applyPriceFilter = (parameters: Parameters, rate: Rate) => {
+function applyPriceFilter(
+  parameters: Parameters,
+  hotelOfferEntity: HotelOfferEntity
+) {
   const {
     filters = {},
     priceBucketWidth,
@@ -68,61 +69,70 @@ const applyPriceFilter = (parameters: Parameters, rate: Rate) => {
     priceBucketsCount * Math.round(priceBucketWidth * exchangeRate)
 
   if (priceMin !== undefined && priceMax !== undefined) {
-    const hasOfferInPriceRange = rate.offers?.some((offer) =>
+    const hasOfferInPriceRange = hotelOfferEntity.offers?.some((offer) =>
       isOfferInPriceRange(offer, upperBound, priceMin, priceMax)
     )
 
     if (!hasOfferInPriceRange) {
       return {
-        ...rate,
+        ...hotelOfferEntity,
         offers: []
       }
     }
   }
 
-  return rate
+  return hotelOfferEntity
 }
 
-const sortByPrice = (rates: Rate[], sortOrder: string) => {
-  return rates.sort((a, b) => {
+function sortByPrice(hotelOfferEntity: HotelOfferEntity[], sortOrder: string) {
+  return hotelOfferEntity.sort((a, b) => {
     const sorter = cheapestDisplayedRate(a) - cheapestDisplayedRate(b)
 
     return sortOrder === 'ascending' ? sorter : -sorter
   })
 }
 
-const applySort = (rates: Rate[], sortBy: SortBy) => {
+function applySort(hotelOfferEntity: HotelOfferEntity[], sortBy: SortBy) {
   const {sortField, sortOrder = 'ascending'} = sortBy
 
   if (sortField === 'price') {
-    return sortByPrice(rates, sortOrder)
+    return sortByPrice(hotelOfferEntity, sortOrder)
   }
 
-  return rates
+  return hotelOfferEntity
 }
 
-export const augmentRaaResponse = (
-  ratesResults: RatesResponse,
+export function augmentRaaResponse(
+  offersResults: OffersResponse,
   parameters: Parameters
-): RatesResponse => {
-  const {hotels, anchorHotel} = ratesResults
-  let augmentedHotelsRates
+) {
+  const {hotels, anchorHotel} = offersResults
+  let augmentedHotelOffers
 
   if (hotels) {
-    augmentedHotelsRates = hotels.map((rate) =>
-      applyPriceFilter(parameters, rate)
+    augmentedHotelOffers = hotels.map((hotelOfferEntity) =>
+      applyPriceFilter(parameters, hotelOfferEntity)
     )
 
     if (parameters.sortField !== undefined) {
-      augmentedHotelsRates = applySort(
-        augmentedHotelsRates,
+      augmentedHotelOffers = applySort(
+        augmentedHotelOffers,
         parameters as SortBy
       )
     }
   }
 
+  const hotelIds: string[] = []
+  const hotelOfferEntities: Record<string, HotelOfferEntity> = {}
+
+  augmentedHotelOffers?.forEach((hotelOfferEntity) => {
+    hotelIds.push(hotelOfferEntity.id)
+    hotelOfferEntities[hotelOfferEntity.id] = hotelOfferEntity
+  })
+
   return {
-    hotels: augmentedHotelsRates,
-    anchorHotel
+    hotelIds,
+    hotelOfferEntities,
+    anchorHotelOffer: anchorHotel
   }
 }

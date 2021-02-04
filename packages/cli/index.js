@@ -37,7 +37,7 @@ async function search(placeId) {
       deviceCategory: 'desktop',
       profileId: 'default',
       useAlternativeRaaKeys: true,
-      rates: true,
+      offers: true,
       getAllOffers: false
     },
     {
@@ -47,8 +47,8 @@ async function search(placeId) {
       onHotelsReceived: (response) => {
         // Console.log('Hotels fetched', JSON.stringify(response))
       },
-      onRatesReceived: (response) => {
-        // Console.log('Rates received', JSON.stringify(response))
+      onOffersReceived: (response) => {
+        // Console.log('Offers received', JSON.stringify(response))
       },
       onComplete: (response) => {
         console.log('Search completed', JSON.stringify(response))

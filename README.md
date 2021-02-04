@@ -1,6 +1,6 @@
 # Search API (SAPI) SDK
 
-SDK provides high level API for searching hotels and rates
+SDK provides high level API for searching hotels and offers
 
 ## Import
 
@@ -30,42 +30,14 @@ const sapiClient = sapi(apiKey, options)
 Provided apiKey is Algolia API Key, and Algolia Application ID is fixed.
 
 
-## Run a place search
-
-A new place search can be runned by calling `placeSearchWithRates` method:
-
-```
-const searchParams = {
-  placeId,
-  checkIn,
-  checkOut,
-  rooms,
-
-  ...filters
-}
-
-sapiClient.placeSearchWithRates(searchParams, onHotelsReceived, onRatesReceived)
-```
-
 Besides the search params it receives optional callbacks:
 
 - `onHotelsReceived` - static hotels from Algolia
-- `onRatesReceived` - every time client receives a new batch of rates from RAA poling
+- `onOffersReceived` - every time client receives a new batch of offers from RAA poling
 
-
-`placeSearchWithRates` is async method that returns Promise which resolves with the next response 
-
-```
-type PlaceSearchWithRatesResponse = {
-  place: PlaceMeta
-  rates: Rates[]
-  results: PlaceSearchWithRatesResults
-}
-```
 
 - `PlaceMeta` - place metadata contains information about the place (place display name, geo data etc)
-- `Rates[]` - final RAA response
-- `PlaceSearchWithRatesResults` Hotels with rates
+- `Offers[]` - final RAA response
 
 ## Integration
 The idea is to have a separate monorepo package in SAPI repository for integrations with different frameworks.
@@ -81,7 +53,7 @@ useSapiSearch(
   onSearchStartCb,
   onComplete,
   onHotelsReceived,
-  onRatesReceived
+  onOffersReceived
 )
 ```
 

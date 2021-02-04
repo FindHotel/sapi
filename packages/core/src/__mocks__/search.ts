@@ -7,7 +7,7 @@ export const searchInput = {
   searchId: '0edf6cf0ae429cd67fe5005c5dffa0b8951897a8',
   useAlternativeRaaKeys: true,
   getAllOffers: false,
-  rates: true
+  offers: true
 }
 
 export const searchOutput = {

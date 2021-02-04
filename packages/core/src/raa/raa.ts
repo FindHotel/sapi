@@ -4,10 +4,10 @@ import {generateSortingBoost} from './utils'
 
 import {omit} from '../utils'
 
-import {Rate, RaaResponse} from '../types'
+import {HotelOfferEntity, RaaResponse} from '../types'
 
 export interface RaaClient {
-  getRates: GetRates
+  getOffers: GetOffers
 }
 
 interface RaaOptions {
@@ -23,7 +23,7 @@ interface RaaOptions {
   sapiCliKey?: string
 }
 
-export interface GetRatesParameters {
+export interface GetOffersParameters {
   anchorDestination?: string
   cugDeals?: string
   getAllOffers?: boolean
@@ -40,17 +40,15 @@ export interface GetRatesParameters {
   }
 }
 
-export interface RatesResponse {
-  anchorHotel?: Rate
-  hotels?: Rate[]
+export interface OffersResponse {
+  anchorHotel?: HotelOfferEntity
+  hotels?: HotelOfferEntity[]
 }
 
-export type OnRatesReceived = (rates: RatesResponse) => void
-
-type GetRates = (
-  parameters: GetRatesParameters,
-  onRatesReceived?: OnRatesReceived
-) => Promise<RatesResponse>
+type GetOffers = (
+  parameters: GetOffersParameters,
+  onOffersReceived?: (response: OffersResponse) => void
+) => Promise<OffersResponse>
 
 enum ReadyStates {
   Connecting,
@@ -62,10 +60,10 @@ enum ReadyStates {
 const MAX_CONNECTION_RETRIES = 20
 const CONNECTION_TIMEOUT = 500 // Ms
 
-const createRaaRequest = (
-  parameters: GetRatesParameters,
+function createRaaRequest(
+  parameters: GetOffersParameters,
   options: RaaOptions
-): string | undefined => {
+) {
   const query = {
     checkIn: parameters.checkIn,
     checkOut: parameters.checkOut,
@@ -101,7 +99,7 @@ const createRaaRequest = (
   return queryString
 }
 
-export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
+export function raa(raaEndpoint: string, options: RaaOptions) {
   if (typeof raaEndpoint === 'undefined') {
     throw new TypeError('RAA endpoint must be provided')
   }
@@ -125,7 +123,7 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
   /**
    * Initialize listeners
    */
-  const initialize = () => {
+  function initialize() {
     socket.addEventListener('open', handleOpen)
     socket.addEventListener('close', handleClose)
     socket.addEventListener('error', handleError)
@@ -138,14 +136,14 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
   const requests: {current?: string} = {}
 
   /**
-   * On rates received handler
+   * On offers received handler
    */
-  let handleRatesReceived: ((response?: RaaResponse) => void) | undefined
+  let handleOffersReceived: ((response?: RaaResponse) => void) | undefined
 
   /**
    * Handle websocket close
    */
-  const handleClose = () => {
+  function handleClose() {
     if (requests.current !== undefined) {
       socket.reconnect()
     }
@@ -154,7 +152,7 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
   /**
    * Handle websocket error
    */
-  const handleError = () => {
+  function handleError() {
     if (requests.current !== undefined) {
       socket.reconnect()
     }
@@ -163,7 +161,7 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
   /**
    * Handle websocket open
    */
-  const handleOpen = () => {
+  function handleOpen() {
     const {current} = requests
 
     if (current !== undefined) {
@@ -176,7 +174,7 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
    *
    * @param message - websocket message
    */
-  const handleMessage = (message: MessageEvent): void => {
+  function handleMessage(message: MessageEvent) {
     let response: RaaResponse | undefined
 
     try {
@@ -185,26 +183,26 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
       console.log('WEBSOCKET: error parsing message')
     }
 
-    if (handleRatesReceived !== undefined) handleRatesReceived(response)
+    if (handleOffersReceived !== undefined) handleOffersReceived(response)
   }
 
   /**
-   * Get rates
+   * Get offers
    *
    * @param parameters - raa request parameters
-   * @param onRatesReceived - on rates received callback
+   * @param onOffersReceived - on offers received callback
    */
-  const getRates = async (
-    parameters: GetRatesParameters,
-    onRatesReceived?: OnRatesReceived
-  ): Promise<RatesResponse> => {
-    const result: RatesResponse = {}
+  async function getOffers(
+    parameters: GetOffersParameters,
+    onOffersReceived?: (response: OffersResponse) => void
+  ): Promise<OffersResponse> {
+    const result: OffersResponse = {}
 
     requests.current = createRaaRequest(parameters, options)
 
     return new Promise((resolve) => {
-      /** Override rates received handler with the current promise.resolve method */
-      handleRatesReceived = (response) => {
+      /** Override offers received handler with the current promise.resolve method */
+      handleOffersReceived = (response) => {
         if (response !== undefined) {
           if (response.status.complete) {
             resolve(result)
@@ -223,8 +221,8 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
               )
             }
 
-            if (typeof onRatesReceived === 'function') {
-              onRatesReceived({...result})
+            if (typeof onOffersReceived === 'function') {
+              onOffersReceived({...result})
             }
           }
         }
@@ -242,6 +240,6 @@ export const raa = (raaEndpoint: string, options: RaaOptions): RaaClient => {
   initialize()
 
   return {
-    getRates
+    getOffers
   }
 }

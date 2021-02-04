@@ -1,4 +1,4 @@
-import sapi from '@findhotel/sapi'
+import {sapi} from '@findhotel/sapi'
 
 const getSearchParameter = (name, isMultiValue, type) => {
   const queryString = window.location.search
@@ -96,7 +96,7 @@ const run = async () => {
     profileId: getSearchParameter('profile') ?? 'default',
     useAlternativeRaaKeys: true,
     getAllOffers: false,
-    rates: true
+    offers: true
   }
 
   log('Search start')
@@ -108,8 +108,8 @@ const run = async () => {
     onHotelsReceived: (response) => {
       log('Hotels fetched', response)
     },
-    onRatesReceived: (response) => {
-      log('Rates received', response)
+    onOffersReceived: (response) => {
+      log('Offers received', response)
     },
     onComplete: (response) => {
       log('Search completed', response)

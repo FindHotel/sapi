@@ -50,10 +50,6 @@ export type Configs = {
 
 export type GetConfig = () => Promise<Configs>
 
-type ConfigsResultArray = [HsoConfig[], ListOfValuesItem[], ExchangeRateHit[]]
-
-type ConfigsResultItem = HsoConfig[] | ListOfValuesItem[] | ExchangeRateHit[]
-
 /**
  * Add Jexl map to replace placeholders with values
  */
@@ -67,10 +63,10 @@ jexl.addTransform('map', (array: string[], s: string): string[] =>
  * @param filters
  * @param context
  */
-const evaluateHsoConfigFilters = (
+function evaluateHsoConfigFilters(
   filters: HsoConfigFilter[],
   context: HsoConfigContext
-): HsoFilter => {
+) {
   let result: HsoFilter = []
 
   filters.some((filter) => {
@@ -93,11 +89,11 @@ const evaluateHsoConfigFilters = (
  * @param hsoConfigType
  * @param context
  */
-export const filterFromHsoConfig = (
+export function filterFromHsoConfig(
   hsoConfig: HsoConfig[],
   hsoConfigType: HsoConfigType,
   context: HsoConfigContext
-): HsoFilter => {
+) {
   const config = hsoConfig.find(({objectID}) => objectID === hsoConfigType)
 
   if (config?.filters === undefined) return []
@@ -110,7 +106,7 @@ export const filterFromHsoConfig = (
  *
  * @param hits
  */
-const exchangeRatesFromResponse = (hits: ExchangeRateHit[]): ExchangeRates => {
+function exchangeRatesFromResponse(hits: ExchangeRateHit[]) {
   const rates: ExchangeRates = {}
 
   hits.forEach(({objectID, rate}) => {
@@ -125,58 +121,63 @@ const exchangeRatesFromResponse = (hits: ExchangeRateHit[]): ExchangeRates => {
  *
  * @param languages
  */
-const getLovAttributesToRetrieve = (languages: string[]): string[] => {
+function getLovAttributesToRetrieve(languages: string[]) {
   const translatedAttributes = getTranslatedAttributes(languages, ['value'])
 
   return ['id', 'categoryID', 'objectID', ...translatedAttributes]
 }
 
-export const loadConfigs = (
+export function loadConfigs(
   {search}: AlgoliaClient,
   {getIndexName}: IndexNameGetter,
   {languages, currencies}: {languages: string[]; currencies: string[]}
-): GetConfig => async () => {
-  const currencyFacetFilters = currencies.map(
-    (currency) => `objectID:${currency}`
-  )
+) {
+  return async () => {
+    const currencyFacetFilters = currencies.map(
+      (currency) => `objectID:${currency}`
+    )
 
-  const requests = [
-    {
-      indexName: getIndexName('hso'),
-      params: {
-        attributesToHighlight: []
+    const requests = [
+      {
+        indexName: getIndexName('hso'),
+        params: {
+          attributesToHighlight: []
+        }
+      },
+      {
+        indexName: getIndexName('lov'),
+        params: {
+          hitsPerPage: 1000,
+          attributesToRetrieve: getLovAttributesToRetrieve(languages),
+          attributesToHighlight: [],
+          getRankingInfo: true
+        }
+      },
+      {
+        indexName: getIndexName('currency'),
+        params: {
+          hitsPerPage: currencyFacetFilters.length,
+          query: '',
+          attributesToRetrieve: ['rate'],
+          attributesToHighlight: [],
+          facetFilters: [currencyFacetFilters],
+          getRankingInfo: false
+        }
       }
-    },
-    {
-      indexName: getIndexName('lov'),
-      params: {
-        hitsPerPage: 1000,
-        attributesToRetrieve: getLovAttributesToRetrieve(languages),
-        attributesToHighlight: [],
-        getRankingInfo: true
-      }
-    },
-    {
-      indexName: getIndexName('currency'),
-      params: {
-        hitsPerPage: currencyFacetFilters.length,
-        query: '',
-        attributesToRetrieve: ['rate'],
-        attributesToHighlight: [],
-        facetFilters: [currencyFacetFilters],
-        getRankingInfo: false
-      }
+    ]
+
+    const {results} = await search<
+      HsoConfig | ListOfValuesItem | ExchangeRateHit
+    >(requests)
+
+    const hso = results[0]?.hits as HsoConfig[]
+    const lov = results[1]?.hits as ListOfValuesItem[]
+    const exchangeRates = results[2]?.hits as ExchangeRateHit[]
+
+    return {
+      hso,
+      lov,
+      exchangeRates: exchangeRatesFromResponse(exchangeRates)
     }
-  ]
-
-  const {results} = await search(requests)
-  const [hso, lov, exchangeRates]: ConfigsResultArray = results.map(
-    (result: {hits: ConfigsResultItem}) => result.hits
-  )
-
-  return {
-    hso,
-    lov,
-    exchangeRates: exchangeRatesFromResponse(exchangeRates)
   }
 }
