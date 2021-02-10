@@ -1,8 +1,6 @@
 import format from 'date-fns/format'
 
-import {
-  dateToMiddayUTC,
-} from './dates'
+import {dateToMiddayUTC} from './dates'
 
 const DATE_FORMAT = 'yyyy-MM-dd'
 

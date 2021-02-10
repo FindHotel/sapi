@@ -1,6 +1,8 @@
 import algoliasearch, {SearchClient} from 'algoliasearch'
 
-import {search, Search} from './search'
+import {search, SearchFn} from './search'
+import {suggest, SuggestFn} from './suggest'
+
 import {raa, RaaClient} from './raa'
 import {
   loadConfigs,
@@ -19,7 +21,8 @@ const ALGOLIA_APP_ID = '4UYGJP42KQ'
 export type AlgoliaClient = Pick<SearchClient, 'search'>
 
 export interface SapiClient {
-  search: Search
+  search: SearchFn
+  suggest: SuggestFn
   getConfig: () => {
     lov: ListOfValuesItem[]
     exchangeRates: ExchangeRates
@@ -138,6 +141,7 @@ export async function sapi(
 
   return {
     search: search(base),
+    suggest: suggest(base),
     getConfig: getConfig(base)
   }
 }

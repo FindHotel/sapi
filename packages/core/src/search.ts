@@ -67,7 +67,7 @@ interface Options {
   pageSize: number
 }
 
-export type Search = (
+export type SearchFn = (
   parameters: ApiSearchParameters,
   callbacks?: {
     onStart?: OnStart
@@ -224,7 +224,7 @@ function getRequestSize(
   return anchorType === 'hotel' ? 45 : 65
 }
 
-export function search(base: Base): Search {
+export function search(base: Base): SearchFn {
   const {appConfig, algoliaClient, raaClient, options, configs} = base
   const {hso, exchangeRates, dates} = configs
   const {languages, currency} = options
@@ -369,19 +369,19 @@ export function search(base: Base): Search {
     /** END */
 
     return {
-      loadOffers: async (objectID) => {
-        if (!objectID) {
+      loadOffers: async (objectId) => {
+        if (!objectId) {
           throw new Error('Hotel id must be provided')
         }
 
-        const isAnchor = objectID === results.anchorHotel?.objectID
+        const isAnchor = objectId === results.anchorHotel?.objectID
 
         const getOffersParameters = {
           ...searchParameters,
           searchId,
           getAllOffers: true,
-          destination: objectID,
-          anchorDestination: isAnchor ? objectID : undefined
+          destination: objectId,
+          anchorDestination: isAnchor ? objectId : undefined
         }
 
         const offersResponse = await raaClient.getOffers(getOffersParameters)
@@ -391,7 +391,7 @@ export function search(base: Base): Search {
         }
 
         return offersResponse.hotels?.find(
-          ({id}: {id: string}) => id === objectID
+          ({id}: {id: string}) => id === objectId
         )
       },
       loadMore: async () => {

@@ -24,6 +24,7 @@ mockedAlgoliaSearch.mockImplementation(() => ({
 
 const expectedSapiClient = {
   search: expect.any(Function),
+  suggest: expect.any(Function),
   getConfig: expect.any(Function)
 }
 

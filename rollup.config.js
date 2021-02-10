@@ -8,7 +8,8 @@ const config = {
   input: 'packages/core/src/index.ts',
   output: {
     dir: 'dist',
-    format: 'cjs'
+    format: 'umd',
+    name: 'sapi'
   },
   plugins: [
     terser(),
@@ -17,7 +18,9 @@ const config = {
       preferBuiltins: false,
       browser: true
     }),
-    commonjs({extensions: ['.js', '.jsx', '.ts', '.tsx']}),
+    commonjs({
+      extensions: ['.js', '.jsx', '.ts', '.tsx']
+    }),
     typescript()
   ]
 }

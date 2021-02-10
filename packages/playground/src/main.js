@@ -1,4 +1,10 @@
-import {sapi} from '@findhotel/sapi'
+import sapi from '@findhotel/sapi'
+
+window.process = {
+  env: {
+    NODE_ENV: 'production'
+  }
+}
 
 const getSearchParameter = (name, isMultiValue, type) => {
   const queryString = window.location.search
@@ -31,7 +37,7 @@ const createLogger = () => {
   }
 }
 
-const run = async () => {
+const runSearch = async () => {
   const log = createLogger()
   /**
    * Create client
@@ -124,4 +130,46 @@ const run = async () => {
   }
 }
 
-run()
+const runSuggest = async (query) => {
+  const log = createLogger()
+  /**
+   * Create client
+   */
+  const client = await sapi(
+    'findhotel-website',
+    'efa703d5c0057a24487bc9bdcb597770',
+    {
+      anonymousId: 'fd9dbb5f-b337-4dd7-b640-1f177d1d3caa',
+      language: 'pt-BR',
+      currency: 'USD',
+      userCountry: 'NL',
+      includeLocalTaxes: true,
+      includeTaxes: true,
+      skipBackendAugmentation: false,
+      facetsEnabled: false,
+      variationIds: {
+        currency: 'default',
+        hotel: 'default',
+        lov: 'default',
+        autocomplete: 'os000007-dynamic-pagesize-b',
+        hso: 'pp000003-tags-b'
+      }
+    }
+  )
+
+  log('Client created')
+
+  log('Suggestion start')
+
+  const suggest = await client.suggest(query)
+
+  log('Suggestion done', suggest)
+
+  window.Sapi = {
+    client
+  }
+}
+
+// RunSearch()
+
+runSuggest('Movenpic')

@@ -1,9 +1,4 @@
-import {
-  generateSearchId,
-  omit
-} from './utils'
-
-const DATE_FORMAT = 'yyyy-MM-dd'
+import {generateSearchId, omit} from './utils'
 
 describe('Utils', () => {
   describe('generateSearchId', () => {
@@ -33,11 +28,11 @@ describe('Utils', () => {
 
   describe('omit', () => {
     it.each`
-      title                             | keys                                  | obj                               | expected
-      ${'existing properties'}          | ${['foo', 'bar']}                     | ${{foo: 'a', baz: 'b', bar: 'c'}} | ${{baz: 'b'}}
+      title                             | keys                                   | obj                               | expected
+      ${'existing properties'}          | ${['foo', 'bar']}                      | ${{foo: 'a', baz: 'b', bar: 'c'}} | ${{baz: 'b'}}
       ${'some non existing properties'} | ${['doesntexist', 'bar']}              | ${{foo: 'a', baz: 'b', bar: 'c'}} | ${{foo: 'a', baz: 'b'}}
       ${'no matching properties'}       | ${['doesntexist', 'alsodoesnotexist']} | ${{foo: 'a', baz: 'b', bar: 'c'}} | ${{foo: 'a', baz: 'b', bar: 'c'}}
-      ${'no properties'}                | ${[]}                                 | ${{foo: 'a', baz: 'b', bar: 'c'}} | ${{foo: 'a', baz: 'b', bar: 'c'}}
+      ${'no properties'}                | ${[]}                                  | ${{foo: 'a', baz: 'b', bar: 'c'}} | ${{foo: 'a', baz: 'b', bar: 'c'}}
       ${'empty target object'}          | ${['doesntexist', 'alsodoesnotexist']} | ${{}}                             | ${{}}
     `(
       'returns object without specified properties without modifying original object when passing $title',

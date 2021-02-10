@@ -114,12 +114,16 @@ type PricingBreakdown =
 
 type Pricing = Record<PricingBreakdown, number>
 
+interface HighlightResult {
+  value: string
+}
+
+export type TranslatedHighlightResult = Record<Language, HighlightResult>
 export type Language = string
-
 export type TranslatedString = Record<Language, string>
-
 export type TranslatedArray = Record<Language, string[]>
 
+/** Anchor hit */
 interface BasicAnchorHit {
   pageSize: number
   objectID: string
@@ -144,6 +148,33 @@ export interface PlaceAnchorHit extends BasicAnchorHit {
 
 export type AnchorHit = HotelAnchorHit | PlaceAnchorHit
 
+/** Suggestion hit */
+interface BasicSuggestHit {
+  objectID: string
+  placeADN: TranslatedArray
+  placeDN: TranslatedArray
+  placeType: number
+}
+
+export interface PlaceSuggestHit extends BasicSuggestHit {
+  placeName: TranslatedString
+  objectType: 'place'
+  _highlightResult: {
+    placeName: TranslatedHighlightResult
+  }
+}
+
+export interface HotelSuggestHit extends BasicSuggestHit {
+  hotelName: TranslatedString
+  objectType: 'hotel'
+  _highlightResult: {
+    hotelName: TranslatedHighlightResult
+  }
+}
+
+export type SuggestHit = HotelSuggestHit | PlaceSuggestHit
+
+/** Hit */
 export interface Hit {
   address: TranslatedString
   checkInTime: string
@@ -190,6 +221,22 @@ export interface PlaceAnchor
 }
 
 export type Anchor = HotelAnchor | PlaceAnchor
+
+export type PlaceTypeName =
+  | 'property'
+  | 'country'
+  | 'city'
+  | 'airport'
+  | 'station'
+  | 'area'
+
+export interface Suggestion {
+  highlightValue: string
+  objectID: string
+  placeDisplayName: string
+  placeTypeName: PlaceTypeName
+  value: string
+}
 
 /**
  * RAA types

@@ -13,10 +13,16 @@ import {
   Hotel,
   TranslatedString,
   TranslatedArray,
-  Language
+  TranslatedHighlightResult,
+  Language,
+  HotelSuggestHit,
+  PlaceSuggestHit,
+  SuggestHit,
+  Suggestion,
+  PlaceTypeName
 } from '../types'
 
-type AnchorHitOrHit = AnchorHit | Hit
+type AnchorSuggestOrHit = AnchorHit | Hit | SuggestHit
 
 type TranslatedAttribute = TranslatedString | TranslatedArray
 
@@ -83,7 +89,7 @@ export function getTranslatedAttributes(
 }
 
 // REVIEW: we should rename this, it is doing more than casting
-function toString(attr: TranslatedString, languages: Language[]) {
+export function toString(attr: TranslatedString, languages: Language[]) {
   for (const lang of languages) {
     if (isNotEmptyOrWhiteSpace(attr?.[lang])) return attr[lang]
   }
@@ -91,7 +97,7 @@ function toString(attr: TranslatedString, languages: Language[]) {
   return ''
 }
 
-function translatedArrayToString(
+export function translatedArrayToString(
   attr: TranslatedArray,
   languages: Language[],
   separator: string | undefined = ', ' // Can be overwritten based on localisation logic
@@ -119,7 +125,56 @@ function translatedArrayToString(
   return toString(out, languages)
 }
 
-function attributeWithFallback(
+export function getStringFromTranslatedArray(
+  attr: TranslatedArray,
+  languages: Language[],
+  index: number
+) {
+  const out: TranslatedString = {}
+
+  languages.forEach((lang) => {
+    const current = attr[lang] || []
+    const end = index === -1 ? undefined : index + 1
+    const item = current.slice(index, end).toString()
+
+    if (isNotEmptyOrWhiteSpace(item)) {
+      out[lang] = item
+    } else {
+      const fallbackLang = languages.find((lang) =>
+        isNotEmptyOrWhiteSpace(attr?.[lang]?.[index])
+      )
+
+      out[lang] = fallbackLang ? attr[fallbackLang][index] : ''
+    }
+  })
+
+  return toString(out, languages)
+}
+
+export function getValueFromTranslatedHightlightResult(
+  attr: TranslatedHighlightResult,
+  languages: Language[]
+) {
+  const out: TranslatedString = {}
+
+  languages.forEach((lang) => {
+    const item = attr[lang]?.value
+
+    if (isNotEmptyOrWhiteSpace(item)) {
+      out[lang] = item
+    } else {
+      const fallbackLang = languages.find((lang) =>
+        isNotEmptyOrWhiteSpace(attr[lang]?.value)
+      )
+
+      out[lang] = fallbackLang ? attr[fallbackLang].value : ''
+    }
+  })
+
+  return toString(out, languages)
+}
+
+export function attributeWithFallback(
   attr: TranslatedAttribute,
   language: string,
   languages: string[]
@@ -130,7 +185,7 @@ function attributeWithFallback(
     const index = languages.indexOf(language)
     // Slice here to start from the right position in languages array
     const fallbackLang =
-      languages.slice(index).find((language) => attr[language]) || 'en'
+      languages.slice(index).find((language) => attr[language]) ?? 'en'
     result = attr[fallbackLang]
   }
 
@@ -141,7 +196,7 @@ function attributeWithFallback(
   return typeof result === 'string' ? [result] : result
 }
 
-function mergeTranslatedAttributes(
+export function mergeTranslatedAttributes(
   a: TranslatedAttribute,
   b: TranslatedAttribute,
   languages: Language[]
@@ -158,26 +213,56 @@ function mergeTranslatedAttributes(
   return translatedArrayToString(output, languages)
 }
 
-function validateHit(
-  hit: AnchorHitOrHit | undefined,
-  requiredAttributes: Record<string, any>
-): AnchorHitOrHit {
-  if (hit === undefined) return requiredAttributes as AnchorHitOrHit
+export function validateHit(
+  hit: AnchorSuggestOrHit | undefined,
+  requiredAttributes: Record<string, any>,
+  skipLoggin?: boolean
+): AnchorSuggestOrHit {
+  if (hit === undefined) return requiredAttributes as AnchorSuggestOrHit
 
   try {
     for (const key in requiredAttributes) {
-      if (hit[key as keyof AnchorHitOrHit] === undefined) {
+      if (hit[key as keyof AnchorSuggestOrHit] === undefined) {
         throw new TypeError(`Hotel ${hit.objectID} is missing ${key} field`)
       }
     }
     // eslint-disable-next-line @typescript-eslint/no-implicit-any-catch
   } catch (error) {
-    console.error(error)
+    if (!skipLoggin) {
+      console.error(error)
+    }
   }
 
   return {
     ...requiredAttributes,
     ...hit
+  }
+}
+
+/**
+ * Converts the placeType number to meaningfull string
+ *
+ * @param {number} placeType
+ */
+export function placeTypeToPlaceTypeName(placeTypeId?: number): PlaceTypeName {
+  // Hotels have no place type attribute in algolia index.
+  if (placeTypeId === undefined) return 'property'
+
+  switch (placeTypeId) {
+    case 0:
+      return 'country'
+    case 23:
+      return 'city'
+    case 64:
+    case 1010:
+      return 'airport'
+    case 199:
+    case 232:
+    case 251:
+    case 1024:
+      return 'station'
+    default:
+      return 'area'
   }
 }
 
@@ -235,4 +320,73 @@ export function hitToPlaceTypeAnchor(
   }
 
   return omit(['placeName', 'placeADN', 'placeDN'], anchor)
+}
+
+export function hitToHotelSuggest(
+  suggestHit: HotelSuggestHit,
+  languages: Language[]
+): Suggestion {
+  const hit = validateHit(suggestHit, {
+    objectID: '',
+    placeADN: {},
+    placeDN: {},
+    objectType: '',
+    hotelName: {},
+    _highlightResult: {}
+  }) as HotelSuggestHit
+
+  const country = getStringFromTranslatedArray(hit.placeADN, languages, -1)
+  const placeParent = getStringFromTranslatedArray(hit.placeDN, languages, 1)
+
+  const placeDisplayName = isNotEmptyOrWhiteSpace(placeParent)
+    ? `${placeParent}, ${country}`
+    : country
+
+  const highlightValue = getValueFromTranslatedHightlightResult(
+    hit._highlightResult.hotelName,
+    languages
+  )
+
+  return {
+    objectID: hit.objectID.replace(`${hit.objectType}:`, ''),
+    value: toString(hit.hotelName, languages),
+    highlightValue,
+    placeDisplayName,
+    placeTypeName: placeTypeToPlaceTypeName()
+  }
+}
+
+export function hitToPlaceSuggest(
+  suggestHit: PlaceSuggestHit,
+  languages: Language[]
+): Suggestion {
+  const hit = validateHit(suggestHit, {
+    objectID: '',
+    placeADN: {},
+    placeDN: {},
+    objectType: '',
+    placeName: {},
+    placeType: 0,
+    _highlightResult: {}
+  }) as PlaceSuggestHit
+
+  const country = getStringFromTranslatedArray(hit.placeADN, languages, -1)
+  const placeParent = getStringFromTranslatedArray(hit.placeDN, languages, 1)
+
+  const placeDisplayName = isNotEmptyOrWhiteSpace(placeParent)
+    ? `${placeParent}, ${country}`
+    : country
+
+  const highlightValue = getValueFromTranslatedHightlightResult(
+    hit._highlightResult.placeName,
+    languages
+  )
+
+  return {
+    objectID: hit.objectID.replace(`${hit.objectType}:`, ''),
+    value: toString(hit.placeName, languages),
+    highlightValue,
+    placeDisplayName,
+    placeTypeName: placeTypeToPlaceTypeName(hit.placeType)
+  }
 }
