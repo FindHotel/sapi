@@ -17,6 +17,7 @@
     "test:watch": "lerna run test:watch",
     "__prepare": "npm run build",
     "___prepare": "cd packages/core && npm install && cd ../../ && rollup -c",
+    "prepare": "cd packages/core && npm install && cd ../../ && npm run build",
     "rollup": "rollup -c",
     "rollup:watch": "npm run clean:dist && rollup -c --watch",
     "typedoc": "lerna run typedoc",
