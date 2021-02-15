@@ -16,8 +16,7 @@
     "test": "lerna run test",
     "test:watch": "lerna run test:watch",
     "__prepare": "npm run build",
-    "prepare": "echo \"HEY I AM PREPARE\" && cd packages/core && npm install && cd ../../ && rollup -c",
-    "postinstall": "echo \"HEY I AM POSTINSTALL\" && cd packages/core && npm install && cd ../../ && rollup -c",
+    "postinstall": "cd packages/core && npm install && cd ../../ && rollup -c",
     "rollup": "rollup -c",
     "rollup:watch": "npm run clean:dist && rollup -c --watch",
     "typedoc": "lerna run typedoc",
@@ -56,6 +55,5 @@
     "typedoc": "^0.19.2",
     "typescript": "^4.1.2",
     "xo": "^0.35.0"
-  },
-  "dependencies": {}
+  }
 }
