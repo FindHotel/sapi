@@ -13,6 +13,7 @@
     "build": "rollup -c && tsc --outDir dist/lib --declarationDir dist/types --declaration true --emitDeclarationOnly",
     "lerna": "lerna",
     "lerna:bootstrap": "lerna bootstrap",
+    "lerna:publish": "lerna publish",
     "test": "lerna run test",
     "test:watch": "lerna run test:watch",
     "__prepare": "npm run build",

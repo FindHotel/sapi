@@ -1,5 +1,6 @@
 {
-  "name": "rollup-starter-app",
+  "name": "sapi-playground",
+  "version": "0.0.1",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^11.0.1",
     "@rollup/plugin-node-resolve": "^7.0.0",
