@@ -79,6 +79,7 @@ const runSearch = async () => {
   const searchParameters = {
     hotelId: getSearchParameter('hotelId'),
     placeId: getSearchParameter('placeId'),
+    query: getSearchParameter('query'),
     checkIn: getSearchParameter('checkIn'),
     checkOut: getSearchParameter('checkOut'),
     dayDistance: getSearchParameter('dayDistance', false, 'number'),
@@ -111,8 +112,11 @@ const runSearch = async () => {
     onStart: (response) => {
       log('Search started', response)
     },
+    onAnchorReceived: (response) => {
+      log('Anchor received', response)
+    },
     onHotelsReceived: (response) => {
-      log('Hotels fetched', response)
+      log('Hotels received', response)
     },
     onOffersReceived: (response) => {
       log('Offers received', response)
@@ -170,6 +174,6 @@ const runSuggest = async (query) => {
   }
 }
 
-// RunSearch()
+runSearch()
 
-runSuggest('Movenpic')
+//runSuggest('Movenpic')

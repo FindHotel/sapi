@@ -50,6 +50,13 @@ type OnStart = (
   response: Pick<SearchResults, 'searchId' | 'searchParameters'>
 ) => void
 
+type OnAnchorReceived = (
+  response: Pick<
+    SearchResults,
+    'searchId' | 'searchParameters' | 'anchor' | 'anchorHotel' | 'anchorType'
+  >
+) => void
+
 type OnHotelsReceived = (
   response: Except<SearchResults, 'hotelOfferEntities' | 'anchorHotelOffer'>
 ) => void
@@ -71,6 +78,7 @@ export type SearchFn = (
   parameters: ApiSearchParameters,
   callbacks?: {
     onStart?: OnStart
+    onAnchorReceived?: OnAnchorReceived
     onHotelsReceived?: OnHotelsReceived
     onOffersReceived?: OnOffersReceived
     onComplete?: OnComplete
@@ -233,7 +241,13 @@ export function search(base: Base): SearchFn {
   return async (parameters, callbacks = {}) => {
     const searchResults = createState({} as SearchResults)
     let loadMoreOffset = 0
-    const {onStart, onHotelsReceived, onOffersReceived, onComplete} = callbacks
+    const {
+      onStart,
+      onAnchorReceived,
+      onHotelsReceived,
+      onOffersReceived,
+      onComplete
+    } = callbacks
 
     /** 1 - Prepare search parameters and generate SearchId */
     const searchParameters = prepareSearchParameters(parameters, dates)
@@ -261,6 +275,10 @@ export function search(base: Base): SearchFn {
       state.anchorType = anchorObject.anchorType
       state.anchorHotel = anchorObject.anchorHotel
     })
+
+    if (typeof onAnchorReceived === 'function') {
+      onAnchorReceived(searchResults.current())
+    }
     /** END */
 
     /** 3 - Initialize geolocation search func */
