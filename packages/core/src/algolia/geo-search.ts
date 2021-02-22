@@ -49,6 +49,7 @@ interface AlgoliaGeoSearchRequest {
   offset: number
   facets: string[]
   filters: string
+  query?: string
   numericFilters: NumericFilters
   facetFilters: FacetFilters
   attributesToRetrieve: string[]
@@ -241,6 +242,10 @@ export function geoSearch(
       facetFilters: buildFacetFilters(parameters),
       attributesToRetrieve: getHotelAttributesToRetrieve(options.languages),
       optionalFilters: buildOptionalFilters(parameters, options)
+    }
+
+    if (filters.hotelName !== undefined) {
+      searchRequest.query = filters.hotelName
     }
 
     if (boundingBox) {

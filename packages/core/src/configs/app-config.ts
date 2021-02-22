@@ -61,7 +61,7 @@ export function loadAppConfig(
 
         const variationId = variationIds[name]
         const index =
-          variations.find((index) => index.variationID === variationId) ||
+          variations.find((index) => index.variationID === variationId) ??
           variations[0]
 
         return index.name

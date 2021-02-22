@@ -19,6 +19,7 @@ export interface FilterParameters {
   priceMin?: number
   priceMax?: number
   freeCancellation?: boolean
+  hotelName?: string
 }
 
 export interface OptionalSearchParameters {

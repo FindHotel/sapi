@@ -96,7 +96,12 @@ const runSearch = async () => {
       noHostels: getSearchParameter('noHostels'),
       priceMin: getSearchParameter('priceMin', false, 'number'),
       priceMax: getSearchParameter('priceMax', false, 'number'),
-      freeCancellation: getSearchParameter('freeCancellation', false, 'boolean')
+      freeCancellation: getSearchParameter(
+        'freeCancellation',
+        false,
+        'boolean'
+      ),
+      hotelName: getSearchParameter('hotelName')
     },
     cugDeals: 'signed_in, offline',
     deviceCategory: 'desktop',
@@ -176,4 +181,4 @@ const runSuggest = async (query) => {
 
 runSearch()
 
-//runSuggest('Movenpic')
+// RunSuggest('Movenpic')
