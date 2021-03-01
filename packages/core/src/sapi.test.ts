@@ -6,8 +6,9 @@ import {configOutput, searchOutput} from './__mocks__/search'
 // Somehow it needs the ; to satisfy TypeScript :/
 jest.mock('algoliasearch')
 
-const mockedAlgoliaSearch = algoliasearch as jest.Mock
+const unknownAlgoliaSearch: unknown = algoliasearch
 
+const mockedAlgoliaSearch = unknownAlgoliaSearch as jest.Mock
 mockedAlgoliaSearch.mockImplementation(() => ({
   search: jest.fn().mockImplementation((args) => {
     const firstArgIndex = args[0].indexName
