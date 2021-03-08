@@ -42,7 +42,6 @@ export interface OptionalSearchParameters {
   profileId?: string
   searchId?: string
   useAlternativeRaaKeys?: boolean
-  freeCancellation?: boolean
   skipGeoSearch?: boolean
 }
 
@@ -89,7 +88,7 @@ export interface Location {
   radius?: number
 }
 
-type GuestsRatingBreakdown =
+export type GuestsRatingBreakdown =
   | 'cleanliness'
   | 'dining'
   | 'facilities'
@@ -99,13 +98,18 @@ type GuestsRatingBreakdown =
   | 'rooms'
   | 'service'
 
-type GuestRating = Record<GuestsRatingBreakdown, number>
+export type GuestRating = Record<GuestsRatingBreakdown, number>
 
-type GuestBreakdown = 'business' | 'couples' | 'families' | 'groups' | 'solo'
+export type GuestBreakdown =
+  | 'business'
+  | 'couples'
+  | 'families'
+  | 'groups'
+  | 'solo'
 
-type GuestType = Record<GuestBreakdown, number>
+export type GuestType = Record<GuestBreakdown, number>
 
-type PricingBreakdown =
+export type PricingBreakdown =
   | 'medianRateBkt'
   | 'medianRateMoFrBkt'
   | 'medianRateSaSuBkt'
@@ -113,7 +117,7 @@ type PricingBreakdown =
   | 'minRateBkt'
   | 'priced'
 
-type Pricing = Record<PricingBreakdown, number>
+export type Pricing = Record<PricingBreakdown, number>
 
 interface HighlightResult {
   value: string
@@ -195,7 +199,6 @@ export interface Hit {
   reviewCount: number
   sentiments: number[]
   starRating: number
-  tags: string[]
   themeIds: number[]
   _geoloc: Partial<Location>
 }
@@ -248,12 +251,12 @@ export interface RateBreakdown {
   taxes: number
 }
 
-interface AnchorPriceRateBreakdown extends RateBreakdown {
+export interface AnchorPriceRateBreakdown extends RateBreakdown {
   calculatedTotalRate: number
   nightlyRate: number
 }
 
-interface TopOfferData {
+export interface TopOfferData {
   anchorPrice: number
   anchorPriceNightly: number
   offerIndexes: number[]
