@@ -17,6 +17,7 @@ async function search(placeId) {
       includeLocalTaxes: true,
       includeTaxes: true,
       skipBackendAugmentation: false,
+      deviceCategory: 'desktop',
       facetsEnabled: false,
       WebSocket: WS,
       variationIds: {
@@ -34,7 +35,6 @@ async function search(placeId) {
       placeId,
       rooms: '2',
       cugDeals: 'signed_in, offline',
-      deviceCategory: 'desktop',
       profileId: 'default',
       useAlternativeRaaKeys: true,
       offers: true,

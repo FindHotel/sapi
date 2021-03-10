@@ -38,7 +38,6 @@ export interface OptionalSearchParameters {
   polygon?: Polygon
   getAllOffers?: boolean
   cugDeals?: string
-  deviceCategory?: string
   profileId?: string
   searchId?: string
   useAlternativeRaaKeys?: boolean
@@ -71,7 +70,6 @@ export type SearchParameters = ApiSearchParameters & {
   checkIn: string
   checkOut: string
   rooms: string
-  deviceCategory: string
 }
 
 /**

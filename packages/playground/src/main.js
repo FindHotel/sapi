@@ -54,6 +54,7 @@ const runSearch = async () => {
       includeTaxes: true,
       skipBackendAugmentation: false,
       facetsEnabled: false,
+      deviceCategory: 'desktop',
       variationIds: {
         currency: 'default',
         hotel: 'default',
@@ -104,7 +105,6 @@ const runSearch = async () => {
       hotelName: getSearchParameter('hotelName')
     },
     cugDeals: 'signed_in, offline',
-    deviceCategory: 'desktop',
     profileId: getSearchParameter('profile') ?? 'default',
     useAlternativeRaaKeys: true,
     getAllOffers: false,

@@ -89,7 +89,6 @@ export type SearchFn = (
 }>
 
 const DEFAULT_ROOMS = '2'
-const DEFAULT_DEVICE_CATEGORY = 'desktop'
 
 function getHsoConfigType(anchorType: AnchorType) {
   switch (anchorType) {
@@ -162,10 +161,7 @@ function prepareSearchParameters(
   parameters: ApiSearchParameters,
   dates: DatesConfig
 ): SearchParameters {
-  const {
-    rooms = DEFAULT_ROOMS,
-    deviceCategory = DEFAULT_DEVICE_CATEGORY
-  } = parameters
+  const {rooms = DEFAULT_ROOMS} = parameters
 
   const {checkIn, checkOut} = getCheckInCheckOutDates(parameters, dates)
 
@@ -173,8 +169,7 @@ function prepareSearchParameters(
     ...parameters,
     checkIn,
     checkOut,
-    rooms,
-    deviceCategory
+    rooms
   }
 }
 

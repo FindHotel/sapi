@@ -21,6 +21,7 @@ interface RaaOptions {
   facetsEnabled?: boolean
   WebSocket?: any
   sapiCliKey?: string
+  deviceCategory: string
 }
 
 export interface GetOffersParameters {
@@ -33,7 +34,6 @@ export interface GetOffersParameters {
   checkIn: string
   checkOut: string
   rooms: string
-  deviceCategory: string
   searchId: string
   filters?: {
     freeCancellation?: boolean
@@ -72,10 +72,10 @@ function createRaaRequest(
     highlightedHotelID: parameters.anchorDestination,
     rooms: parameters.rooms,
     cugDeals: parameters.cugDeals,
-    deviceCategory: parameters.deviceCategory,
     profileId: parameters.profileId,
     searchId: parameters.searchId,
     useAlternativeRaaKeys: parameters.useAlternativeRaaKeys,
+    deviceCategory: options.deviceCategory,
     languageCode: options.language,
     userCountryCode: options.userCountry,
     currencyCode: options.currency,

@@ -40,6 +40,7 @@ describe('SapiClient', () => {
           currency: 'USD',
           userCountry: 'NL',
           pageSize: 20,
+          deviceCategory: 'desktop',
           variationIds: {
             currency: 'default',
             hotel: 'default',
@@ -63,6 +64,7 @@ describe('SapiClient', () => {
           skipBackendAugmentation: false,
           facetsEnabled: false,
           pageSize: 20,
+          deviceCategory: 'desktop',
           variationIds: {
             currency: 'default',
             hotel: 'default',

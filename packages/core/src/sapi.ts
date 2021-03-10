@@ -51,6 +51,8 @@ export interface SapiClientOptions {
   facetsEnabled?: boolean
   /** Used to identify SAPI Cli interface on the RAA backend */
   sapiCliKey?: string
+  /** Device category of the consumer */
+  deviceCategory: string
   /** A/B tests variation IDs */
   variationIds: Record<string, string>
 }
@@ -108,7 +110,8 @@ export async function sapi(
   const options = {
     ...clientOptions,
     pageSize: clientOptions.pageSize ?? 20,
-    currency: clientOptions.currency?.toUpperCase() ?? 'USD'
+    currency: clientOptions.currency?.toUpperCase() ?? 'USD',
+    deviceCategory: clientOptions.deviceCategory ?? 'desktop'
   }
 
   const {language, currency, variationIds} = options
